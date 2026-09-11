@@ -1,0 +1,6 @@
+# Copy this file to `local.properties` (which is git-ignored) and fill in
+# the paths for your machine before opening the project in Android
+# Studio or running `flutter build`.
+#
+# sdk.dir=/path/to/Android/sdk
+# flutter.sdk=/path/to/flutter
