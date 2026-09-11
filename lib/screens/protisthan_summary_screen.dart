@@ -5,6 +5,7 @@ import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
 /// Screen 7: প্রতিষ্ঠান মাসিক সামারি — FR-6.1, FR-5.4, FR-5.5.
@@ -60,7 +61,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: safeBodyPadding(context),
               children: [
                 MonthPickerField(
                   month: _month,

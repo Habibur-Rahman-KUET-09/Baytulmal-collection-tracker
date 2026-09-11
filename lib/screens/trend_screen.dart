@@ -7,6 +7,7 @@ import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../utils/bangla_utils.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
 enum _TrendMode { total, criteria, ward }
@@ -85,7 +86,7 @@ class _TrendScreenState extends State<TrendScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('ট্রেন্ড দেখুন')),
       body: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: safeBodyPadding(context),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

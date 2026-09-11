@@ -6,6 +6,7 @@ import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 
@@ -90,7 +91,7 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                   message: 'কোনো ওয়ার্ড যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ওয়ার্ড যোগ করুন।',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: safeBodyPadding(context, amount: 12),
                   itemCount: _wards.length,
                   itemBuilder: (context, index) {
                     final w = _wards[index];

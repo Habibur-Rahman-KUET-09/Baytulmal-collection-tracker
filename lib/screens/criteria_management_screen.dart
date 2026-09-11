@@ -5,6 +5,7 @@ import '../db/database_helper.dart';
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 
@@ -88,7 +89,7 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                   message: 'কোনো ক্রাইটেরিয়া যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ক্রাইটেরিয়া যোগ করুন।',
                 )
               : ListView.builder(
-                  padding: const EdgeInsets.all(12),
+                  padding: safeBodyPadding(context, amount: 12),
                   itemCount: _criteria.length,
                   itemBuilder: (context, index) {
                     final c = _criteria[index];

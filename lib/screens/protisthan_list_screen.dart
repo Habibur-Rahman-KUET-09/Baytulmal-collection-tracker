@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/bangla_utils.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 import 'data_management_screen.dart';
@@ -89,7 +90,7 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
               : RefreshIndicator(
                   onRefresh: provider.refresh,
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
+                    padding: safeBodyPadding(context, amount: 12),
                     itemCount: provider.protisthanList.length,
                     itemBuilder: (context, index) {
                       final p = provider.protisthanList[index];

@@ -7,6 +7,7 @@ import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/bangla_utils.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 import 'criteria_management_screen.dart';
@@ -159,7 +160,7 @@ class _WardsTabState extends State<_WardsTab> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
-                    padding: const EdgeInsets.all(12),
+                    padding: safeBodyPadding(context, amount: 12),
                     itemCount: _wards.length,
                     itemBuilder: (context, index) {
                       final w = _wards[index];
@@ -278,7 +279,7 @@ class _SummaryTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: safeBodyPadding(context),
       children: [
         _SummaryCard(
           icon: Icons.summarize_outlined,

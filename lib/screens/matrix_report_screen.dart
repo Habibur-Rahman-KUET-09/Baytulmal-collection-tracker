@@ -107,6 +107,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         month: _month,
         year: _year,
         data: _data!,
+        totalCollection: _totalCollection,
+        expenseAmount: _expenseAmount,
+        actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
       if (mounted) {
@@ -174,7 +177,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                       Theme.of(context).colorScheme.surfaceContainerHighest,
                     ),
                     columns: [
-                      DataColumn(label: Text('Ward', style: headerStyle)),
+                      DataColumn(label: Text('ওয়ার্ড', style: headerStyle)),
                       ...data.criteriaList.map((c) => DataColumn(label: Text(c.name, style: headerStyle))),
                       DataColumn(label: Text('মোট', style: headerStyle)),
                     ],

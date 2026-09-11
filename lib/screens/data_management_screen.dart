@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_data_provider.dart';
 import '../services/backup_service.dart';
 import '../utils/bangla_utils.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 
 /// ডেটা ব্যবস্থাপনা — full-database JSON export/import (backup & restore).
@@ -85,7 +86,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
       body: AbsorbPointer(
         absorbing: _busy,
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: safeBodyPadding(context),
           children: [
             Card(
               child: Padding(

@@ -58,7 +58,7 @@ class PdfExportService {
       );
     }
 
-    final title = await label('বাইতুলমাল কালেকশন ট্র্যাকার — ম্যাট্রিক্স রিপোর্ট', fontSize: 16, bold: true);
+    final title = await label('বাইতুলমাল কালেকশন ট্র্যাকার', fontSize: 16, bold: true);
     // Em dash, not middle-dot: NotoSansBengali (and the test harness used to
     // verify this file's rendering) doesn't reliably have U+00B7.
     final subtitle = await label('$protisthanName — ${BanglaMonths.label(month, year)}', fontSize: 12);
@@ -210,10 +210,14 @@ class PdfExportService {
       expenseAmount: expenseAmount,
       actualDepositAmount: actualDepositAmount,
     );
-    final safeName = protisthanName.replaceAll(RegExp(r'[^\wঀ-৿]+'), '_');
     await Printing.sharePdf(
       bytes: await doc.save(),
-      filename: 'matrix_report_${safeName}_${year}_$month.pdf',
+      filename: ReportFileName.build(
+        protisthanName: protisthanName,
+        month: month,
+        year: year,
+        extension: 'pdf',
+      ),
     );
   }
 

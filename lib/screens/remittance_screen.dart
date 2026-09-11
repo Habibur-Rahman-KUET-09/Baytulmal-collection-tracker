@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../db/database_helper.dart';
 import '../models/protisthan.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
 /// উচ্চ কর্তৃপক্ষে জমার হিসাব — a separate, per-Protisthan/month page
@@ -98,7 +99,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: safeBodyPadding(context),
               children: [
                 MonthPickerField(
                   month: _month,

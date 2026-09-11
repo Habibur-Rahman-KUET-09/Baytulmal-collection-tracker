@@ -8,6 +8,7 @@ import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/month_picker_field.dart';
 import 'ward_summary_screen.dart';
@@ -194,7 +195,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
           : Form(
               key: _formKey,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: safeBodyPadding(context),
                 children: [
                   const Text('মাস নির্বাচন করুন', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),

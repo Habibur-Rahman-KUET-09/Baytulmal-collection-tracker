@@ -57,3 +57,26 @@ class BanglaMonths {
     return buffer.toString();
   }
 }
+
+/// Shared filename for both the PDF and Excel matrix-report downloads:
+/// "বাইতুলমাল রিপোর্ট - {প্রতিষ্ঠান} - {মাস} - {ডাউনলোড সময়}.{ext}".
+class ReportFileName {
+  static String build({
+    required String protisthanName,
+    required int month,
+    required int year,
+    required String extension,
+  }) {
+    final now = DateTime.now();
+    final stamp = '${_two(now.day)}-${_two(now.month)}-${now.year} '
+        '${_two(now.hour)}-${_two(now.minute)}';
+    final raw = 'বাইতুলমাল রিপোর্ট - $protisthanName - '
+        '${BanglaMonths.label(month, year)} - $stamp';
+    // Strip characters that are invalid in filenames on Android/exFAT;
+    // spaces, dashes and Bangla text are all safe and kept as typed.
+    final safe = raw.replaceAll(RegExp(r'[/\\:*?"<>|]'), '_').trim();
+    return '$safe.$extension';
+  }
+
+  static String _two(int n) => n.toString().padLeft(2, '0');
+}

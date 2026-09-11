@@ -5,6 +5,7 @@ import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../utils/currency_formatter.dart';
+import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
 /// Screen 8: ওয়ার্ড মাসিক সামারি — FR-6.2, FR-5.2.
@@ -66,7 +67,7 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: safeBodyPadding(context),
               children: [
                 MonthPickerField(
                   month: _month,
