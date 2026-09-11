@@ -107,7 +107,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   @override
   Widget build(BuildContext context) {
     final data = _data;
-    final headerStyle = const TextStyle(fontWeight: FontWeight.bold);
+    const headerStyle = TextStyle(fontWeight: FontWeight.bold);
     return Scaffold(
       appBar: AppBar(
         title: Text('রিপোর্ট — ${widget.protisthan.name}'),

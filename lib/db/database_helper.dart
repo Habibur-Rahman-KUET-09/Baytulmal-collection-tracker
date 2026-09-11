@@ -2,7 +2,6 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 
 import '../models/criteria.dart';
-import '../models/entry.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 
@@ -406,8 +405,9 @@ class DatabaseHelper {
     );
   }
 
-  /// Trend data across a month range (FR-6.3/6.4). `mode` is "total",
-  /// "criteria:<id>" or "ward:<id>".
+  /// Trend data across a month range (FR-6.3/6.4). Pass neither
+  /// `criteriaId` nor `wardId` for the Protisthan total, or exactly one of
+  /// them to filter to a single Criteria or Ward.
   Future<List<TrendPoint>> getTrendData({
     required int protisthanId,
     required int startMonth,

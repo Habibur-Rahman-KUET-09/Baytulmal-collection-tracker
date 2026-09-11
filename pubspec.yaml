@@ -32,7 +32,6 @@ dependencies:
 
   # Share exported files / backup files
   share_plus: ^13.0.0
-  cross_file: ^0.3.4
 
   # Pick a JSON backup file to import
   file_picker: ^12.0.0
@@ -43,7 +42,7 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_lints: ^6.0.0
 
 flutter:
   uses-material-design: true

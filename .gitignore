@@ -6,7 +6,8 @@
 .pub-cache/
 .pub/
 build/
-*.lock
+# pubspec.lock is intentionally tracked (this is an app, not a package) for
+# reproducible builds.
 
 # Android
 android/local.properties
@@ -17,6 +18,7 @@ android/gradle/wrapper/gradle-wrapper.jar
 android/app/debug/
 android/app/profile/
 android/app/release/
+android/app/src/main/java/io/flutter/plugins/GeneratedPluginRegistrant.java
 *.iml
 *.jks
 key.properties
