@@ -13,6 +13,7 @@ import 'criteria_management_screen.dart';
 import 'entry_form_screen.dart';
 import 'matrix_report_screen.dart';
 import 'protisthan_summary_screen.dart';
+import 'remittance_screen.dart';
 import 'trend_screen.dart';
 import 'ward_management_screen.dart';
 
@@ -107,27 +108,28 @@ class _WardsTabState extends State<_WardsTab> {
   }
 
   Future<void> _addWard() async {
-    final name = await showNameInputDialog(
-      context,
-      title: 'নতুন ওয়ার্ড যোগ করুন',
-      label: 'ওয়ার্ডের নাম',
-      hintText: 'যেমনঃ ওয়ার্ড ১',
-    );
-    if (name != null && name.isNotEmpty && mounted) {
-      await context.read<AppDataProvider>().addWard(widget.protisthan.id!, name);
+    final result = await showWardInputDialog(context, title: 'নতুন ওয়ার্ড যোগ করুন');
+    if (result != null && result.name.isNotEmpty && mounted) {
+      await context
+          .read<AppDataProvider>()
+          .addWard(widget.protisthan.id!, result.name, targetAmount: result.targetAmount);
       _load();
     }
   }
 
-  Future<void> _renameWard(Ward w) async {
-    final name = await showNameInputDialog(
+  Future<void> _editWard(Ward w) async {
+    final result = await showWardInputDialog(
       context,
-      title: 'ওয়ার্ডের নাম সম্পাদনা',
-      label: 'ওয়ার্ডের নাম',
-      initialValue: w.name,
+      title: 'ওয়ার্ড সম্পাদনা',
+      initialName: w.name,
+      initialTargetAmount: w.targetAmount,
     );
-    if (name != null && name.isNotEmpty && mounted) {
-      await context.read<AppDataProvider>().renameWard(w, name);
+    if (result != null && result.name.isNotEmpty && mounted) {
+      await context.read<AppDataProvider>().updateWardInfo(
+            w,
+            name: result.name,
+            targetAmount: result.targetAmount,
+          );
       _load();
     }
   }
@@ -167,11 +169,12 @@ class _WardsTabState extends State<_WardsTab> {
                         child: ListTile(
                           title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                            '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? '৳ ০ (খালি)' : CurrencyFormatter.format(total)}',
+                            '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? '৳ ০ (খালি)' : CurrencyFormatter.format(total)}'
+                            '${w.targetAmount > 0 ? '  •  লক্ষ্যমাত্রা ${CurrencyFormatter.format(w.targetAmount)}' : ''}',
                           ),
                           trailing: PopupMenuButton<String>(
                             onSelected: (value) {
-                              if (value == 'edit') _renameWard(w);
+                              if (value == 'edit') _editWard(w);
                               if (value == 'delete') _deleteWard(w);
                               if (value == 'manage') {
                                 Navigator.of(context)
@@ -182,7 +185,7 @@ class _WardsTabState extends State<_WardsTab> {
                               }
                             },
                             itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'edit', child: Text('নাম সম্পাদনা')),
+                              PopupMenuItem(value: 'edit', child: Text('সম্পাদনা')),
                               PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
                               PopupMenuItem(value: 'manage', child: Text('সব ওয়ার্ড ম্যানেজ করুন')),
                             ],
@@ -299,6 +302,14 @@ class _SummaryTab extends StatelessWidget {
           subtitle: 'ওয়ার্ড × ক্রাইটেরিয়া টেবিল — PDF/Excel এক্সপোর্ট করুন',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => MatrixReportScreen(protisthan: protisthan)),
+          ),
+        ),
+        _SummaryCard(
+          icon: Icons.account_balance_outlined,
+          title: 'উচ্চ কর্তৃপক্ষে জমা',
+          subtitle: 'মোট কালেকশন, খরচ ও প্রকৃত জমার হিসাব',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => RemittanceScreen(protisthan: protisthan)),
           ),
         ),
       ],

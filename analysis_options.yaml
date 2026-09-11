@@ -2,6 +2,7 @@ analyzer:
   exclude:
     - build/**
     - android/**
+    - tool/**
 include: package:flutter_lints/flutter.yaml
 
 linter:

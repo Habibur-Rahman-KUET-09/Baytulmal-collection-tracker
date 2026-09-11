@@ -95,6 +95,10 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
                     ),
                   ),
                 ),
+                if (widget.ward.targetAmount > 0) ...[
+                  const SizedBox(height: 12),
+                  _TargetMatchCard(target: widget.ward.targetAmount, breakdown: _breakdown),
+                ],
                 const SizedBox(height: 20),
                 const Text('ক্রাইটেরিয়া অনুযায়ী বিভাজন', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
@@ -111,6 +115,47 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
                 ),
               ],
             ),
+    );
+  }
+}
+
+class _TargetMatchCard extends StatelessWidget {
+  final double target;
+  final List<MapEntry<Criteria, double>> breakdown;
+  const _TargetMatchCard({required this.target, required this.breakdown});
+
+  double _sumOf(int specialOrder) {
+    final entry = breakdown.where((e) => e.key.specialOrder == specialOrder);
+    return entry.isEmpty ? 0 : entry.first.value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final specialSum = _sumOf(2) + _sumOf(3);
+    final matched = (specialSum - target).abs() < 0.005;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: (matched ? Colors.green : Colors.orange).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: matched ? Colors.green : Colors.orange),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            matched ? Icons.check_circle_outline : Icons.info_outline,
+            color: matched ? Colors.green : Colors.orange,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'নির্ধারিত লক্ষ্যমাত্রা: ${CurrencyFormatter.format(target)}'
+              '${matched ? ' — আদায়+বকেয়ার সাথে মিলেছে' : ' — আদায়+বকেয়া: ${CurrencyFormatter.format(specialSum)}'}',
+              style: const TextStyle(fontSize: 12.5),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

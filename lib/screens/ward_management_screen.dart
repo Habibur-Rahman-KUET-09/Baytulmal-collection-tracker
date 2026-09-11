@@ -5,6 +5,7 @@ import '../db/database_helper.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
+import '../utils/currency_formatter.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 
@@ -39,27 +40,28 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
   }
 
   Future<void> _add() async {
-    final name = await showNameInputDialog(
-      context,
-      title: 'নতুন ওয়ার্ড যোগ করুন',
-      label: 'ওয়ার্ডের নাম',
-      hintText: 'যেমনঃ ওয়ার্ড ৬',
-    );
-    if (name != null && name.isNotEmpty && mounted) {
-      await context.read<AppDataProvider>().addWard(widget.protisthan.id!, name);
+    final result = await showWardInputDialog(context, title: 'নতুন ওয়ার্ড যোগ করুন');
+    if (result != null && result.name.isNotEmpty && mounted) {
+      await context
+          .read<AppDataProvider>()
+          .addWard(widget.protisthan.id!, result.name, targetAmount: result.targetAmount);
       _load();
     }
   }
 
-  Future<void> _rename(Ward w) async {
-    final name = await showNameInputDialog(
+  Future<void> _edit(Ward w) async {
+    final result = await showWardInputDialog(
       context,
-      title: 'ওয়ার্ডের নাম সম্পাদনা',
-      label: 'ওয়ার্ডের নাম',
-      initialValue: w.name,
+      title: 'ওয়ার্ড সম্পাদনা',
+      initialName: w.name,
+      initialTargetAmount: w.targetAmount,
     );
-    if (name != null && name.isNotEmpty && mounted) {
-      await context.read<AppDataProvider>().renameWard(w, name);
+    if (result != null && result.name.isNotEmpty && mounted) {
+      await context.read<AppDataProvider>().updateWardInfo(
+            w,
+            name: result.name,
+            targetAmount: result.targetAmount,
+          );
       _load();
     }
   }
@@ -96,12 +98,15 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         title: Text(w.name),
+                        subtitle: w.targetAmount > 0
+                            ? Text('লক্ষ্যমাত্রা: ${CurrencyFormatter.format(w.targetAmount)}')
+                            : null,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
                               icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _rename(w),
+                              onPressed: () => _edit(w),
                             ),
                             IconButton(
                               icon: const Icon(Icons.delete_outline),

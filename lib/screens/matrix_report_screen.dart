@@ -23,6 +23,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   late int _month;
   late int _year;
   MatrixReportData? _data;
+  double _totalCollection = 0;
+  double _expenseAmount = 0;
+  double _actualDepositAmount = 0;
   bool _loading = true;
   bool _exporting = false;
 
@@ -37,9 +40,14 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final data = await db.getMatrixReport(widget.protisthan.id!, _month, _year);
+    final total = await db.getProtisthanTotal(widget.protisthan.id!, _month, _year);
+    final remittance = await db.getRemittance(widget.protisthan.id!, _month, _year);
     if (!mounted) return;
     setState(() {
       _data = data;
+      _totalCollection = total;
+      _expenseAmount = remittance?.expenseAmount ?? 0;
+      _actualDepositAmount = remittance?.actualDepositAmount ?? 0;
       _loading = false;
     });
   }
@@ -53,6 +61,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         month: _month,
         year: _year,
         data: _data!,
+        totalCollection: _totalCollection,
+        expenseAmount: _expenseAmount,
+        actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
       if (mounted) {
@@ -73,6 +84,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         month: _month,
         year: _year,
         data: _data!,
+        totalCollection: _totalCollection,
+        expenseAmount: _expenseAmount,
+        actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
       if (mounted) {

@@ -96,6 +96,12 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
                         title: Text(c.name),
+                        subtitle: c.isSpecial
+                            ? const Text(
+                                'বিশেষ ক্রাইটেরিয়া — নির্ধারিত লক্ষ্যমাত্রার সাথে সম্পর্কিত',
+                                style: TextStyle(fontSize: 11.5),
+                              )
+                            : null,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -103,10 +109,11 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                               icon: const Icon(Icons.edit_outlined),
                               onPressed: () => _rename(c),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _delete(c),
-                            ),
+                            if (!c.isSpecial)
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline),
+                                onPressed: () => _delete(c),
+                              ),
                           ],
                         ),
                       ),

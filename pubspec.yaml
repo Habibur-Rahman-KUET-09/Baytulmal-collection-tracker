@@ -44,6 +44,15 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   sqflite_common_ffi: ^2.4.3
+  image: ^4.3.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: false # this project has no ios/ platform directory
+  image_path: "assets/icon/app_icon.png"
+  adaptive_icon_background: "#081A15"
+  adaptive_icon_foreground: "assets/icon/app_icon_foreground.png"
 
 flutter:
   uses-material-design: true

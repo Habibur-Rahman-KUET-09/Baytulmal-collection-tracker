@@ -231,4 +231,105 @@ void main() {
     expect(restored.any((p) => p.name == 'ব্যাকআপ পরীক্ষা'), isTrue);
     expect(await db.getWardTotal(wId, 9, 2026), 4321);
   });
+
+  test('insertProtisthan auto-seeds the আদায়/বকেয়া special criteria', () async {
+    final pId = await addProtisthan('স্পেশাল ক্রাইটেরিয়া টেস্ট');
+
+    final criteria = await db.getCriteriaForProtisthan(pId);
+
+    expect(criteria, hasLength(2));
+    expect(criteria.every((c) => c.isSpecial), isTrue);
+    expect(criteria[0].name, 'আদায়');
+    expect(criteria[0].specialOrder, 2);
+    expect(criteria[1].name, 'বকেয়া');
+    expect(criteria[1].specialOrder, 3);
+  });
+
+  test('special criteria always sort first regardless of insertion order', () async {
+    final pId = await addProtisthan('সর্টিং টেস্ট');
+    // Normal criteria added after the auto-seeded special ones.
+    await addCriteria(pId, 'দোকান ভাড়া');
+    await addCriteria(pId, 'টোল');
+
+    final criteria = await db.getCriteriaForProtisthan(pId);
+
+    expect(criteria, hasLength(4));
+    expect(criteria[0].isSpecial, isTrue);
+    expect(criteria[1].isSpecial, isTrue);
+    expect(criteria[2].name, 'দোকান ভাড়া');
+    expect(criteria[3].name, 'টোল');
+  });
+
+  test('deleteCriteria throws for a special criteria (আদায়/বকেয়া cannot be deleted)', () async {
+    final pId = await addProtisthan('ডিলিট প্রোটেকশন টেস্ট');
+    final criteria = await db.getCriteriaForProtisthan(pId);
+    final specialCriteria = criteria.firstWhere((c) => c.isSpecial);
+
+    expect(() => db.deleteCriteria(specialCriteria.id!), throwsA(isA<StateError>()));
+
+    // Untouched — still there after the failed delete attempt.
+    expect(await db.getCriteriaForProtisthan(pId), hasLength(2));
+  });
+
+  test('ward target amount round-trips and getProtisthanTargetTotal sums all wards', () async {
+    final pId = await addProtisthan('লক্ষ্যমাত্রা টেস্ট');
+    final w1Id = await db.insertWard(
+      Ward(
+        uuid: 'w-target-1-$pId',
+        protisthanId: pId,
+        name: 'ওয়ার্ড ১',
+        createdAt: DateTime.now().toIso8601String(),
+        targetAmount: 30000,
+      ),
+    );
+    final w2Id = await db.insertWard(
+      Ward(
+        uuid: 'w-target-2-$pId',
+        protisthanId: pId,
+        name: 'ওয়ার্ড ২',
+        createdAt: DateTime.now().toIso8601String(),
+        targetAmount: 45000,
+      ),
+    );
+
+    final w1 = await db.getWard(w1Id);
+    expect(w1!.targetAmount, 30000);
+
+    final wardsForProtisthan = await db.getWardsForProtisthan(pId);
+    expect(wardsForProtisthan.firstWhere((w) => w.id == w2Id).targetAmount, 45000);
+
+    final targetTotal = await db.getProtisthanTargetTotal(pId);
+    expect(targetTotal, 75000);
+  });
+
+  test('saveRemittance / getRemittance round-trips and overwrites on re-entry, mirroring saveEntry (FR-4.5)', () async {
+    final pId = await addProtisthan('রেমিট্যান্স টেস্ট');
+
+    expect(await db.getRemittance(pId, 9, 2026), isNull);
+
+    await db.saveRemittance(
+      protisthanId: pId,
+      month: 9,
+      year: 2026,
+      expenseAmount: 5000,
+      actualDepositAmount: 40000,
+    );
+    final first = await db.getRemittance(pId, 9, 2026);
+    expect(first, isNotNull);
+    expect(first!.expenseAmount, 5000);
+    expect(first.actualDepositAmount, 40000);
+
+    // Re-entering the same protisthan+month overwrites, not duplicates.
+    await db.saveRemittance(
+      protisthanId: pId,
+      month: 9,
+      year: 2026,
+      expenseAmount: 6000,
+      actualDepositAmount: 42000,
+    );
+    final updated = await db.getRemittance(pId, 9, 2026);
+    expect(updated!.id, first.id);
+    expect(updated.expenseAmount, 6000);
+    expect(updated.actualDepositAmount, 42000);
+  });
 }

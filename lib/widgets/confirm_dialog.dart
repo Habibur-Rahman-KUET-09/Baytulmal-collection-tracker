@@ -81,3 +81,87 @@ Future<String?> showNameInputDialog(
   );
   return result;
 }
+
+class WardInputResult {
+  final String name;
+  final double targetAmount;
+  const WardInputResult({required this.name, required this.targetAmount});
+}
+
+/// Add/rename dialog for a Ward — also collects/edits its fixed
+/// নির্ধারিত লক্ষ্যমাত্রা (special criteria ১, set once and not part of any
+/// per-month Entry).
+Future<WardInputResult?> showWardInputDialog(
+  BuildContext context, {
+  required String title,
+  String? initialName,
+  double initialTargetAmount = 0,
+}) async {
+  final nameCtrl = TextEditingController(text: initialName ?? '');
+  final targetCtrl = TextEditingController(
+    text: initialTargetAmount == 0 ? '' : _trimZero(initialTargetAmount),
+  );
+  final formKey = GlobalKey<FormState>();
+
+  final result = await showDialog<WardInputResult>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'ওয়ার্ডের নাম'),
+              textInputAction: TextInputAction.next,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: targetCtrl,
+              decoration: const InputDecoration(
+                labelText: 'নির্ধারিত লক্ষ্যমাত্রা (৳)',
+                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের আদায় + বকেয়া এর '
+                    'সাথে মিলিয়ে দেখা হবে।',
+                helperMaxLines: 2,
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                if (double.tryParse(v.trim()) == null) return 'সঠিক সংখ্যা দিন';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('বাতিল'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (formKey.currentState!.validate()) {
+              Navigator.of(context).pop(WardInputResult(
+                name: nameCtrl.text.trim(),
+                targetAmount: double.tryParse(targetCtrl.text.trim()) ?? 0,
+              ));
+            }
+          },
+          child: const Text('সংরক্ষণ করুন'),
+        ),
+      ],
+    ),
+  );
+  return result;
+}
+
+String _trimZero(double value) {
+  if (value == value.roundToDouble()) return value.toInt().toString();
+  return value.toString();
+}

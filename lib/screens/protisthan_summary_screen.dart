@@ -23,6 +23,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
   late int _year;
 
   double _total = 0;
+  double _targetTotal = 0;
   List<MapEntry<Criteria, double>> _criteriaBreakdown = [];
   List<MapEntry<Ward, double>> _wardBreakdown = [];
   bool _loading = true;
@@ -41,11 +42,13 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
     final criteriaBreakdown =
         await db.getProtisthanCriteriaBreakdown(widget.protisthan.id!, _month, _year);
     final wardBreakdown = await db.getProtisthanWardBreakdown(widget.protisthan.id!, _month, _year);
+    final targetTotal = await db.getProtisthanTargetTotal(widget.protisthan.id!);
     if (!mounted) return;
     setState(() {
       _total = total;
       _criteriaBreakdown = criteriaBreakdown;
       _wardBreakdown = wardBreakdown;
+      _targetTotal = targetTotal;
       _loading = false;
     });
   }
@@ -86,6 +89,26 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                     ),
                   ),
                 ),
+                if (_targetTotal > 0) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blueGrey.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('সকল ওয়ার্ডের মোট নির্ধারিত লক্ষ্যমাত্রা', style: TextStyle(fontSize: 12.5)),
+                        Text(
+                          CurrencyFormatter.format(_targetTotal),
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const Text('ক্রাইটেরিয়া অনুযায়ী', style: TextStyle(fontWeight: FontWeight.bold)),
                 const Divider(),

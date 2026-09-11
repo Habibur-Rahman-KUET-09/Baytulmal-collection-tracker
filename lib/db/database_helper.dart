@@ -1,9 +1,15 @@
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:uuid/uuid.dart';
 
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
+import '../models/remittance.dart';
 import '../models/ward.dart';
+
+const int _specialCollectedOrder = 2; // আদায়
+const int _specialDueOrder = 3; // বকেয়া
+const _uuid = Uuid();
 
 /// Single point of access to the local SQLite database.
 ///
@@ -26,11 +32,12 @@ class DatabaseHelper {
     final path = join(dbPath, 'baytulmal_collection_tracker.db');
     return openDatabase(
       path,
-      version: 1,
+      version: 2,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
       onCreate: _createSchema,
+      onUpgrade: _upgradeSchema,
     );
   }
 
@@ -51,6 +58,7 @@ class DatabaseHelper {
         protisthan_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        special_order INTEGER,
         FOREIGN KEY (protisthan_id) REFERENCES protisthan (id) ON DELETE CASCADE
       )
     ''');
@@ -62,6 +70,7 @@ class DatabaseHelper {
         protisthan_id INTEGER NOT NULL,
         name TEXT NOT NULL,
         created_at TEXT NOT NULL,
+        target_amount REAL NOT NULL DEFAULT 0,
         FOREIGN KEY (protisthan_id) REFERENCES protisthan (id) ON DELETE CASCADE
       )
     ''');
@@ -90,15 +99,97 @@ class DatabaseHelper {
     await db.execute('CREATE INDEX idx_ward_protisthan ON ward (protisthan_id)');
     await db.execute('CREATE INDEX idx_entry_ward ON entry (ward_id)');
     await db.execute('CREATE INDEX idx_entry_criteria ON entry (criteria_id)');
+
+    await _createRemittanceTable(db);
+  }
+
+  Future<void> _createRemittanceTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE remittance (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        uuid TEXT NOT NULL UNIQUE,
+        protisthan_id INTEGER NOT NULL,
+        month INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        expense_amount REAL NOT NULL DEFAULT 0,
+        actual_deposit_amount REAL NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY (protisthan_id) REFERENCES protisthan (id) ON DELETE CASCADE
+      )
+    ''');
+    await db.execute('''
+      CREATE UNIQUE INDEX idx_remittance_unique
+        ON remittance (protisthan_id, month, year)
+    ''');
+    await db.execute('CREATE INDEX idx_remittance_protisthan ON remittance (protisthan_id)');
+  }
+
+  /// v1 -> v2: special criteria (আদায়/বকেয়া + ward-level নির্ধারিত
+  /// লক্ষ্যমাত্রা) and the higher-management remittance page.
+  Future<void> _upgradeSchema(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE criteria ADD COLUMN special_order INTEGER');
+      await db.execute('ALTER TABLE ward ADD COLUMN target_amount REAL NOT NULL DEFAULT 0');
+      await _createRemittanceTable(db);
+      await _seedSpecialCriteriaForAllProtisthan(db);
+    }
+  }
+
+  /// Ensures every existing Protisthan has its আদায়/বকেয়া special criteria
+  /// (new Protisthan get these at creation time instead — see
+  /// [ensureSpecialCriteria]).
+  Future<void> _seedSpecialCriteriaForAllProtisthan(Database db) async {
+    final protisthanRows = await db.query('protisthan', columns: ['id']);
+    for (final row in protisthanRows) {
+      await ensureSpecialCriteria(row['id'] as int, db: db);
+    }
+  }
+
+  /// Creates this Protisthan's আদায়/বকেয়া special criteria if they don't
+  /// already exist. Safe to call repeatedly (e.g. right after creating a
+  /// Protisthan, and defensively during the v1->v2 migration).
+  Future<void> ensureSpecialCriteria(int protisthanId, {Database? db}) async {
+    final database = db ?? await this.database;
+    final existing = await database.query(
+      'criteria',
+      where: 'protisthan_id = ? AND special_order IS NOT NULL',
+      whereArgs: [protisthanId],
+    );
+    final haveOrders = existing.map((r) => r['special_order'] as int).toSet();
+    final now = DateTime.now().toIso8601String();
+
+    if (!haveOrders.contains(_specialCollectedOrder)) {
+      await database.insert('criteria', {
+        'uuid': _uuid.v4(),
+        'protisthan_id': protisthanId,
+        'name': 'আদায়',
+        'created_at': now,
+        'special_order': _specialCollectedOrder,
+      });
+    }
+    if (!haveOrders.contains(_specialDueOrder)) {
+      await database.insert('criteria', {
+        'uuid': _uuid.v4(),
+        'protisthan_id': protisthanId,
+        'name': 'বকেয়া',
+        'created_at': now,
+        'special_order': _specialDueOrder,
+      });
+    }
   }
 
   // ---------------------------------------------------------------------
   // Protisthan CRUD
   // ---------------------------------------------------------------------
 
+  /// Also seeds this Protisthan's আদায়/বকেয়া special criteria (section
+  /// 4/5 of the special-criteria feature) so every Protisthan always has
+  /// them, without the caller needing to know about that detail.
   Future<int> insertProtisthan(Protisthan p) async {
     final db = await database;
-    return db.insert('protisthan', p.toMap()..remove('id'));
+    final id = await db.insert('protisthan', p.toMap()..remove('id'));
+    await ensureSpecialCriteria(id, db: db);
+    return id;
   }
 
   Future<int> updateProtisthan(Protisthan p) async {
@@ -138,18 +229,30 @@ class DatabaseHelper {
     return db.update('criteria', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
   }
 
+  /// আদায়/বকেয়া (special criteria) can't be deleted — the fixed-target
+  /// relationship (আদায় + বকেয়া = নির্ধারিত লক্ষ্যমাত্রা) depends on them
+  /// always existing. The UI already hides the delete action for them;
+  /// this is the backstop.
   Future<int> deleteCriteria(int id) async {
     final db = await database;
+    final rows = await db.query('criteria', where: 'id = ?', whereArgs: [id]);
+    if (rows.isNotEmpty && rows.first['special_order'] != null) {
+      throw StateError('special criteria (আদায়/বকেয়া) cannot be deleted');
+    }
     return db.delete('criteria', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Special criteria (আদায়/বকেয়া) always sort first, in their defined
+  /// order, regardless of when they were created — migration-seeded
+  /// special criteria on a pre-existing Protisthan would otherwise land
+  /// after that Protisthan's normal criteria by id.
   Future<List<Criteria>> getCriteriaForProtisthan(int protisthanId) async {
     final db = await database;
     final rows = await db.query(
       'criteria',
       where: 'protisthan_id = ?',
       whereArgs: [protisthanId],
-      orderBy: 'id ASC',
+      orderBy: 'CASE WHEN special_order IS NULL THEN 1 ELSE 0 END, special_order ASC, id ASC',
     );
     return rows.map(Criteria.fromMap).toList();
   }
@@ -294,6 +397,18 @@ class DatabaseHelper {
     final criteriaList = await getCriteriaForProtisthan(protisthanId);
     final entries = await getEntriesForWardMonth(wardId, month, year);
     return criteriaList.map((c) => MapEntry(c, entries[c.id] ?? 0.0)).toList();
+  }
+
+  /// Special criteria ১ (নির্ধারিত লক্ষ্যমাত্রা) at the Protisthan level:
+  /// the sum of all its wards' fixed target amounts (section 5) — not
+  /// stored anywhere itself, always derived.
+  Future<double> getProtisthanTargetTotal(int protisthanId) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT COALESCE(SUM(target_amount), 0) AS total FROM ward WHERE protisthan_id = ?',
+      [protisthanId],
+    );
+    return (rows.first['total'] as num).toDouble();
   }
 
   /// Protisthan total for a month = sum of all its wards' totals (FR-5.4).
@@ -462,6 +577,60 @@ class DatabaseHelper {
   }
 
   // ---------------------------------------------------------------------
+  // Higher-management remittance (protisthan + month): total collection is
+  // derived from Entry data via getProtisthanTotal; expense and the actual
+  // deposited amount are the two figures recorded here.
+  // ---------------------------------------------------------------------
+
+  Future<Remittance?> getRemittance(int protisthanId, int month, int year) async {
+    final db = await database;
+    final rows = await db.query(
+      'remittance',
+      where: 'protisthan_id = ? AND month = ? AND year = ?',
+      whereArgs: [protisthanId, month, year],
+    );
+    if (rows.isEmpty) return null;
+    return Remittance.fromMap(rows.first);
+  }
+
+  /// Inserts or overwrites (by protisthan+month/year, mirroring the Entry
+  /// overwrite-on-re-entry rule) this month's expense/actual-deposit
+  /// figures.
+  Future<void> saveRemittance({
+    required int protisthanId,
+    required int month,
+    required int year,
+    required double expenseAmount,
+    required double actualDepositAmount,
+  }) async {
+    final db = await database;
+    final existing = await getRemittance(protisthanId, month, year);
+    final now = DateTime.now().toIso8601String();
+    if (existing != null) {
+      await db.update(
+        'remittance',
+        {
+          'expense_amount': expenseAmount,
+          'actual_deposit_amount': actualDepositAmount,
+          'updated_at': now,
+        },
+        where: 'id = ?',
+        whereArgs: [existing.id],
+      );
+    } else {
+      await db.insert('remittance', {
+        'uuid': _uuid.v4(),
+        'protisthan_id': protisthanId,
+        'month': month,
+        'year': year,
+        'expense_amount': expenseAmount,
+        'actual_deposit_amount': actualDepositAmount,
+        'updated_at': now,
+      });
+    }
+  }
+
+  // ---------------------------------------------------------------------
   // Full data export / import (backup & restore — additional feature)
   // ---------------------------------------------------------------------
 
@@ -471,11 +640,13 @@ class DatabaseHelper {
     final criteriaRows = await db.query('criteria');
     final wardRows = await db.query('ward');
     final entryRows = await db.query('entry');
+    final remittanceRows = await db.query('remittance');
     return {
       'protisthan': protisthanRows,
       'criteria': criteriaRows,
       'ward': wardRows,
       'entry': entryRows,
+      'remittance': remittanceRows,
     };
   }
 
@@ -486,6 +657,7 @@ class DatabaseHelper {
     final db = await database;
     await db.transaction((txn) async {
       await txn.delete('entry');
+      await txn.delete('remittance');
       await txn.delete('ward');
       await txn.delete('criteria');
       await txn.delete('protisthan');
@@ -502,6 +674,11 @@ class DatabaseHelper {
       }
       for (final row in (data['entry'] as List)) {
         batch.insert('entry', Map<String, dynamic>.from(row as Map));
+      }
+      // Older backups (from before the higher-management feature) simply
+      // won't have a 'remittance' key — nothing to restore, not an error.
+      for (final row in (data['remittance'] as List? ?? const [])) {
+        batch.insert('remittance', Map<String, dynamic>.from(row as Map));
       }
       await batch.commit(noResult: true);
     });

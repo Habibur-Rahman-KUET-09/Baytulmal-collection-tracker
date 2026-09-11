@@ -66,16 +66,22 @@ class AppDataProvider extends ChangeNotifier {
     await refresh();
   }
 
-  Future<int> addWard(int protisthanId, String name) async {
+  Future<int> addWard(int protisthanId, String name, {double targetAmount = 0}) async {
     final id = await db.insertWard(
-      Ward(uuid: newUuid(), protisthanId: protisthanId, name: name, createdAt: nowIso()),
+      Ward(
+        uuid: newUuid(),
+        protisthanId: protisthanId,
+        name: name,
+        createdAt: nowIso(),
+        targetAmount: targetAmount,
+      ),
     );
     await refresh();
     return id;
   }
 
-  Future<void> renameWard(Ward w, String newName) async {
-    await db.updateWard(w.copyWith(name: newName));
+  Future<void> updateWardInfo(Ward w, {required String name, required double targetAmount}) async {
+    await db.updateWard(w.copyWith(name: name, targetAmount: targetAmount));
     await refresh();
   }
 
