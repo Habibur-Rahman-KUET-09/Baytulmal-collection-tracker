@@ -30,8 +30,8 @@ void main() {
     final w1 = Ward(id: 1, uuid: 'w1', protisthanId: 1, name: 'ওয়ার্ড ১', createdAt: '');
     final w2 = Ward(id: 2, uuid: 'w2', protisthanId: 1, name: 'ওয়ার্ড ২', createdAt: '');
     final c1 = Criteria(id: 1, uuid: 'c1', protisthanId: 1, name: 'দোকান ভাড়া', createdAt: '');
-    final c2 = Criteria(id: 2, uuid: 'c2', protisthanId: 1, name: 'আদায়', createdAt: '', specialOrder: 2);
-    final c3 = Criteria(id: 3, uuid: 'c3', protisthanId: 1, name: 'বকেয়া', createdAt: '', specialOrder: 3);
+    final c2 = Criteria(id: 2, uuid: 'c2', protisthanId: 1, name: 'খরচ', createdAt: '', specialOrder: 2);
+    final c3 = Criteria(id: 3, uuid: 'c3', protisthanId: 1, name: 'সিনিয়র ম্যানেজমেন্ট এ জমা', createdAt: '', specialOrder: 3);
 
     final data = MatrixReportData(
       wards: [w1, w2],

@@ -132,8 +132,10 @@ class _TargetMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final specialSum = _sumOf(2) + _sumOf(3);
-    final matched = (specialSum - target).abs() < 0.005;
+    final expense = _sumOf(2);
+    final deposit = _sumOf(3);
+    final expectedDeposit = target - expense;
+    final matched = (expectedDeposit - deposit).abs() < 0.005;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -151,7 +153,7 @@ class _TargetMatchCard extends StatelessWidget {
           Expanded(
             child: Text(
               'নির্ধারিত লক্ষ্যমাত্রা: ${CurrencyFormatter.format(target)}'
-              '${matched ? ' — আদায়+বকেয়ার সাথে মিলেছে' : ' — আদায়+বকেয়া: ${CurrencyFormatter.format(specialSum)}'}',
+              '${matched ? ' — লক্ষ্যমাত্রা − খরচ = জমা মিলেছে' : ' — প্রত্যাশিত জমা: ${CurrencyFormatter.format(expectedDeposit)}, প্রকৃত জমা: ${CurrencyFormatter.format(deposit)}'}',
               style: const TextStyle(fontSize: 12.5),
             ),
           ),

@@ -7,8 +7,9 @@ import '../models/protisthan.dart';
 import '../models/remittance.dart';
 import '../models/ward.dart';
 
-const int _specialCollectedOrder = 2; // আদায়
-const int _specialDueOrder = 3; // বকেয়া
+const int _specialTargetOrder = 1; // লক্ষ্যমাত্রা (fixed — mirrors ward.target_amount, no Entry)
+const int _specialExpenseOrder = 2; // খরচ
+const int _specialDepositOrder = 3; // সিনিয়র ম্যানেজমেন্ট এ জমা
 const _uuid = Uuid();
 
 /// Single point of access to the local SQLite database.
@@ -32,7 +33,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'baytulmal_collection_tracker.db');
     return openDatabase(
       path,
-      version: 2,
+      version: 3,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -126,16 +127,41 @@ class DatabaseHelper {
 
   /// v1 -> v2: special criteria (আদায়/বকেয়া + ward-level নির্ধারিত
   /// লক্ষ্যমাত্রা) and the higher-management remittance page.
+  /// v2 -> v3: special criteria became লক্ষ্যমাত্রা (১)/খরচ (২)/সিনিয়র
+  /// ম্যানেজমেন্ট এ জমা (৩), replacing আদায় (২)/বকেয়া (৩).
   Future<void> _upgradeSchema(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE criteria ADD COLUMN special_order INTEGER');
       await db.execute('ALTER TABLE ward ADD COLUMN target_amount REAL NOT NULL DEFAULT 0');
       await _createRemittanceTable(db);
-      await _seedSpecialCriteriaForAllProtisthan(db);
+    }
+    if (oldVersion < 3) {
+      await _migrateToTargetExpenseDepositCriteria(db);
     }
   }
 
-  /// Ensures every existing Protisthan has its আদায়/বকেয়া special criteria
+  /// v2 -> v3: renames the existing special_order ২/৩ criteria in place
+  /// (আদায় -> খরচ, বকেয়া -> সিনিয়র ম্যানেজমেন্ট এ জমা — their historical
+  /// Entry amounts carry over under the new labels) and seeds special_order
+  /// ১ (লক্ষ্যমাত্রা) for every Protisthan, since it didn't exist as a
+  /// Criteria row before v3.
+  Future<void> _migrateToTargetExpenseDepositCriteria(Database db) async {
+    await db.update(
+      'criteria',
+      {'name': 'খরচ'},
+      where: 'special_order = ?',
+      whereArgs: [_specialExpenseOrder],
+    );
+    await db.update(
+      'criteria',
+      {'name': 'সিনিয়র ম্যানেজমেন্ট এ জমা'},
+      where: 'special_order = ?',
+      whereArgs: [_specialDepositOrder],
+    );
+    await _seedSpecialCriteriaForAllProtisthan(db);
+  }
+
+  /// Ensures every existing Protisthan has all three special criteria
   /// (new Protisthan get these at creation time instead — see
   /// [ensureSpecialCriteria]).
   Future<void> _seedSpecialCriteriaForAllProtisthan(Database db) async {
@@ -145,9 +171,10 @@ class DatabaseHelper {
     }
   }
 
-  /// Creates this Protisthan's আদায়/বকেয়া special criteria if they don't
-  /// already exist. Safe to call repeatedly (e.g. right after creating a
-  /// Protisthan, and defensively during the v1->v2 migration).
+  /// Creates this Protisthan's লক্ষ্যমাত্রা/খরচ/সিনিয়র ম্যানেজমেন্ট এ জমা
+  /// special criteria if they don't already exist. Safe to call repeatedly
+  /// (e.g. right after creating a Protisthan, and defensively during the
+  /// v2->v3 migration).
   Future<void> ensureSpecialCriteria(int protisthanId, {Database? db}) async {
     final database = db ?? await this.database;
     final existing = await database.query(
@@ -158,22 +185,31 @@ class DatabaseHelper {
     final haveOrders = existing.map((r) => r['special_order'] as int).toSet();
     final now = DateTime.now().toIso8601String();
 
-    if (!haveOrders.contains(_specialCollectedOrder)) {
+    if (!haveOrders.contains(_specialTargetOrder)) {
       await database.insert('criteria', {
         'uuid': _uuid.v4(),
         'protisthan_id': protisthanId,
-        'name': 'আদায়',
+        'name': 'লক্ষ্যমাত্রা',
         'created_at': now,
-        'special_order': _specialCollectedOrder,
+        'special_order': _specialTargetOrder,
       });
     }
-    if (!haveOrders.contains(_specialDueOrder)) {
+    if (!haveOrders.contains(_specialExpenseOrder)) {
       await database.insert('criteria', {
         'uuid': _uuid.v4(),
         'protisthan_id': protisthanId,
-        'name': 'বকেয়া',
+        'name': 'খরচ',
         'created_at': now,
-        'special_order': _specialDueOrder,
+        'special_order': _specialExpenseOrder,
+      });
+    }
+    if (!haveOrders.contains(_specialDepositOrder)) {
+      await database.insert('criteria', {
+        'uuid': _uuid.v4(),
+        'protisthan_id': protisthanId,
+        'name': 'সিনিয়র ম্যানেজমেন্ট এ জমা',
+        'created_at': now,
+        'special_order': _specialDepositOrder,
       });
     }
   }
@@ -182,9 +218,10 @@ class DatabaseHelper {
   // Protisthan CRUD
   // ---------------------------------------------------------------------
 
-  /// Also seeds this Protisthan's আদায়/বকেয়া special criteria (section
-  /// 4/5 of the special-criteria feature) so every Protisthan always has
-  /// them, without the caller needing to know about that detail.
+  /// Also seeds this Protisthan's লক্ষ্যমাত্রা/খরচ/সিনিয়র ম্যানেজমেন্ট এ জমা
+  /// special criteria (section 4/5 of the special-criteria feature) so
+  /// every Protisthan always has them, without the caller needing to know
+  /// about that detail.
   Future<int> insertProtisthan(Protisthan p) async {
     final db = await database;
     final id = await db.insert('protisthan', p.toMap()..remove('id'));
@@ -229,23 +266,23 @@ class DatabaseHelper {
     return db.update('criteria', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
   }
 
-  /// আদায়/বকেয়া (special criteria) can't be deleted — the fixed-target
-  /// relationship (আদায় + বকেয়া = নির্ধারিত লক্ষ্যমাত্রা) depends on them
-  /// always existing. The UI already hides the delete action for them;
-  /// this is the backstop.
+  /// Special criteria (লক্ষ্যমাত্রা/খরচ/সিনিয়র ম্যানেজমেন্ট এ জমা) can't be
+  /// deleted — the fixed relationship (লক্ষ্যমাত্রা − খরচ = জমা) depends on
+  /// all three always existing. The UI already hides the delete action for
+  /// them; this is the backstop.
   Future<int> deleteCriteria(int id) async {
     final db = await database;
     final rows = await db.query('criteria', where: 'id = ?', whereArgs: [id]);
     if (rows.isNotEmpty && rows.first['special_order'] != null) {
-      throw StateError('special criteria (আদায়/বকেয়া) cannot be deleted');
+      throw StateError('special criteria (লক্ষ্যমাত্রা/খরচ/সিনিয়র ম্যানেজমেন্ট এ জমা) cannot be deleted');
     }
     return db.delete('criteria', where: 'id = ?', whereArgs: [id]);
   }
 
-  /// Special criteria (আদায়/বকেয়া) always sort first, in their defined
-  /// order, regardless of when they were created — migration-seeded
-  /// special criteria on a pre-existing Protisthan would otherwise land
-  /// after that Protisthan's normal criteria by id.
+  /// Special criteria always sort first, in their defined order, regardless
+  /// of when they were created — migration-seeded special criteria on a
+  /// pre-existing Protisthan would otherwise land after that Protisthan's
+  /// normal criteria by id.
   Future<List<Criteria>> getCriteriaForProtisthan(int protisthanId) async {
     final db = await database;
     final rows = await db.query(
@@ -387,7 +424,9 @@ class DatabaseHelper {
     return (rows.first['total'] as num).toDouble();
   }
 
-  /// Per-criteria breakdown for a single ward + month (FR-6.2).
+  /// Per-criteria breakdown for a single ward + month (FR-6.2). লক্ষ্যমাত্রা
+  /// (special_order ১) isn't backed by an Entry — its value is always the
+  /// ward's fixed [Ward.targetAmount].
   Future<List<MapEntry<Criteria, double>>> getWardCriteriaBreakdown(
     int wardId,
     int protisthanId,
@@ -396,7 +435,11 @@ class DatabaseHelper {
   ) async {
     final criteriaList = await getCriteriaForProtisthan(protisthanId);
     final entries = await getEntriesForWardMonth(wardId, month, year);
-    return criteriaList.map((c) => MapEntry(c, entries[c.id] ?? 0.0)).toList();
+    final ward = await getWard(wardId);
+    final targetAmount = ward?.targetAmount ?? 0;
+    return criteriaList
+        .map((c) => MapEntry(c, c.isFixedTarget ? targetAmount : entries[c.id] ?? 0.0))
+        .toList();
   }
 
   /// Special criteria ১ (নির্ধারিত লক্ষ্যমাত্রা) at the Protisthan level:
@@ -426,7 +469,10 @@ class DatabaseHelper {
     return (rows.first['total'] as num).toDouble();
   }
 
-  /// Breakdown by Criteria across all wards of a Protisthan for a month (FR-5.3, FR-6.1).
+  /// Breakdown by Criteria across all wards of a Protisthan for a month
+  /// (FR-5.3, FR-6.1). লক্ষ্যমাত্রা (special_order ১) isn't backed by any
+  /// Entry — its value is always [getProtisthanTargetTotal], the sum of
+  /// all this Protisthan's wards' fixed target amounts.
   Future<List<MapEntry<Criteria, double>>> getProtisthanCriteriaBreakdown(
     int protisthanId,
     int month,
@@ -445,7 +491,10 @@ class DatabaseHelper {
       [protisthanId, month, year],
     );
     final totals = {for (final r in rows) r['criteria_id'] as int: (r['total'] as num).toDouble()};
-    return criteriaList.map((c) => MapEntry(c, totals[c.id] ?? 0.0)).toList();
+    final targetTotal = await getProtisthanTargetTotal(protisthanId);
+    return criteriaList
+        .map((c) => MapEntry(c, c.isFixedTarget ? targetTotal : totals[c.id] ?? 0.0))
+        .toList();
   }
 
   /// Breakdown by Ward for a Protisthan/month (FR-6.1).
@@ -473,6 +522,12 @@ class DatabaseHelper {
   /// Matrix report data (FR-8.x): full ward x criteria amount grid, plus
   /// row totals, column totals and the grand total — all derived from the
   /// same Entry set so they are consistent by construction (FR-5.5).
+  ///
+  /// লক্ষ্যমাত্রা (special_order ১) has no Entry of its own — its cell is
+  /// always the ward's fixed [Ward.targetAmount], the same every month, and
+  /// (being a reference figure rather than money actually collected) it's
+  /// excluded from every row total and the grand total, though its own
+  /// column total still shows the sum of the wards' targets.
   Future<MatrixReportData> getMatrixReport(int protisthanId, int month, int year) async {
     final wards = await getWardsForProtisthan(protisthanId);
     final criteriaList = await getCriteriaForProtisthan(protisthanId);
@@ -495,6 +550,19 @@ class DatabaseHelper {
       cells.putIfAbsent(wardId, () => {})[criteriaId] = amount;
     }
 
+    Criteria? targetCriteria;
+    for (final c in criteriaList) {
+      if (c.isFixedTarget) {
+        targetCriteria = c;
+        break;
+      }
+    }
+    if (targetCriteria != null) {
+      for (final w in wards) {
+        cells.putIfAbsent(w.id!, () => {})[targetCriteria.id!] = w.targetAmount;
+      }
+    }
+
     final rowTotals = <int, double>{};
     final colTotals = <int, double>{};
     double grandTotal = 0;
@@ -503,8 +571,8 @@ class DatabaseHelper {
       double rowSum = 0;
       for (final c in criteriaList) {
         final v = cells[w.id]?[c.id] ?? 0.0;
-        rowSum += v;
         colTotals[c.id!] = (colTotals[c.id] ?? 0) + v;
+        if (!c.isFixedTarget) rowSum += v;
       }
       rowTotals[w.id!] = rowSum;
       grandTotal += rowSum;

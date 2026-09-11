@@ -63,7 +63,8 @@ class PdfExportService {
     // verify this file's rendering) doesn't reliably have U+00B7.
     final subtitle = await label('$protisthanName — ${BanglaMonths.label(month, year)}', fontSize: 12);
     final footerNote = await label(
-      'নিচের-ডানদিকের ঘর = ওয়ার্ড টোটালের যোগফল = ক্রাইটেরিয়া টোটালের যোগফল',
+      'নিচের-ডানদিকের ঘর = ওয়ার্ড টোটালের যোগফল = ক্রাইটেরিয়া টোটালের যোগফল '
+      '(লক্ষ্যমাত্রা বাদে — এটি কালেকশনের অংশ নয়, শুধু তুলনার জন্য দেখানো হয়েছে)',
       fontSize: 9,
     );
 
@@ -127,7 +128,10 @@ class PdfExportService {
       label('প্রত্যাশিত জমা (১ - ২)', bold: true),
       label('৩. উচ্চ কর্তৃপক্ষে প্রকৃত জমা', bold: true),
       label(matched
-          ? 'মিলেছে ✓'
+          // No "✓" here: NotoSansBengali via our dart:ui rasterization
+          // pipeline doesn't reliably have U+2713 either (same class of
+          // issue as the middle-dot and ৳ symbol above).
+          ? 'মিলেছে'
           : 'অমিল — পার্থক্য ${CurrencyFormatter.format(difference.abs(), withSymbol: false)}'),
     ]);
 

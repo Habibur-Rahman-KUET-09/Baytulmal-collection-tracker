@@ -124,8 +124,8 @@ Future<WardInputResult?> showWardInputDialog(
               controller: targetCtrl,
               decoration: const InputDecoration(
                 labelText: 'নির্ধারিত লক্ষ্যমাত্রা (৳)',
-                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের আদায় + বকেয়া এর '
-                    'সাথে মিলিয়ে দেখা হবে।',
+                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের খরচ ও জমার '
+                    'সাথে মিলিয়ে দেখা হবে (লক্ষ্যমাত্রা − খরচ = জমা)।',
                 helperMaxLines: 2,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

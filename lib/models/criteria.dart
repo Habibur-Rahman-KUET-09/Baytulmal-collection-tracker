@@ -5,13 +5,19 @@ class Criteria {
   final String name;
   final String createdAt;
 
-  /// Marks this as one of the two "special" per-month criteria (২ = আদায়,
-  /// ৩ = বকেয়া) that, together with the ward's fixed [Ward.targetAmount]
-  /// (special criteria ১), should satisfy আদায় + বকেয়া = নির্ধারিত
-  /// লক্ষ্যমাত্রা. `null` means a normal, user-defined criteria. Otherwise
-  /// behaves exactly like any other criteria (same Entry rows, same
-  /// matrix/summary aggregation) — this flag only changes how it's
-  /// presented (ordering, highlighting) and that it can't be deleted.
+  /// Marks this as one of the three "special" criteria that together
+  /// satisfy লক্ষ্যমাত্রা − খরচ = জমা:
+  ///   ১ = লক্ষ্যমাত্রা — not backed by an Entry at all; its value is
+  ///       always the ward's fixed [Ward.targetAmount], fixed at ward
+  ///       creation and never re-typed per month. Excluded from every
+  ///       row/column/grand total (it's a reference figure, not money
+  ///       actually collected) — see [DatabaseHelper.getMatrixReport].
+  ///   ২ = খরচ — an ordinary per-month Entry.
+  ///   ৩ = সিনিয়র ম্যানেজমেন্ট এ জমা — an ordinary per-month Entry.
+  /// `null` means a normal, user-defined criteria. ২ and ৩ otherwise behave
+  /// exactly like any other criteria (same Entry rows, same matrix/summary
+  /// aggregation) — this flag only changes how they're presented (ordering,
+  /// highlighting) and that they can't be deleted.
   final int? specialOrder;
 
   const Criteria({
@@ -24,6 +30,10 @@ class Criteria {
   });
 
   bool get isSpecial => specialOrder != null;
+
+  /// লক্ষ্যমাত্রা — the one special criteria with no Entry of its own;
+  /// its value always comes from [Ward.targetAmount] instead.
+  bool get isFixedTarget => specialOrder == 1;
 
   Criteria copyWith({
     int? id,

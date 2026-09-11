@@ -15,10 +15,12 @@ import 'ward_summary_screen.dart';
 
 /// Screen 6: ডেটা এন্ট্রি ফর্ম — FR-4.1 .. FR-4.6.
 ///
-/// The Protisthan's special আদায়/বকেয়া criteria are shown first, in a
-/// highlighted section with a live check against the Ward's fixed
-/// নির্ধারিত লক্ষ্যমাত্রা (আদায় + বকেয়া = লক্ষ্যমাত্রা); every other
-/// criteria follows exactly as before, unaffected.
+/// The Protisthan's special খরচ/সিনিয়র ম্যানেজমেন্ট এ জমা criteria are
+/// shown first, in a highlighted section with a live check against the
+/// Ward's fixed লক্ষ্যমাত্রা (লক্ষ্যমাত্রা − খরচ = জমা). লক্ষ্যমাত্রা itself
+/// has no input here — it's fixed at ward creation, shown only as a
+/// reference figure. Every other criteria follows exactly as before,
+/// unaffected.
 class EntryFormScreen extends StatefulWidget {
   final Ward ward;
   final Protisthan protisthan;
@@ -74,6 +76,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     }
     _controllers.clear();
     for (final c in criteriaList) {
+      if (c.isFixedTarget) continue; // no Entry — always shown from ward.targetAmount
       final value = existing[c.id];
       _controllers[c.id!] = TextEditingController(
         text: value == null ? '' : _trimZero(value),
@@ -106,6 +109,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     final appData = context.read<AppDataProvider>();
     try {
       for (final c in _criteriaList) {
+        if (c.isFixedTarget) continue;
         final text = _controllers[c.id!]!.text.trim();
         final amount = text.isEmpty ? null : double.parse(text);
         await db.saveEntry(
@@ -153,22 +157,23 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final specialCriteria = _criteriaList.where((c) => c.isSpecial).toList();
+    final editableSpecialCriteria = _criteriaList.where((c) => c.isSpecial && !c.isFixedTarget).toList();
     final normalCriteria = _criteriaList.where((c) => !c.isSpecial).toList();
-    final hasTarget = widget.ward.targetAmount > 0;
+    final targetAmount = widget.ward.targetAmount;
+    final hasTarget = targetAmount > 0;
 
     double sumOf(int? specialOrder) {
-      final c = specialCriteria.where((c) => c.specialOrder == specialOrder);
+      final c = editableSpecialCriteria.where((c) => c.specialOrder == specialOrder);
       if (c.isEmpty) return 0;
       return double.tryParse(_controllers[c.first.id!]!.text.trim()) ?? 0;
     }
 
-    final collected = sumOf(2);
-    final due = sumOf(3);
-    final specialSum = collected + due;
-    final matched = hasTarget && (specialSum - widget.ward.targetAmount).abs() < 0.005;
+    final expense = sumOf(2);
+    final deposit = sumOf(3);
+    final expectedDeposit = targetAmount - expense;
+    final matched = hasTarget && (expectedDeposit - deposit).abs() < 0.005;
     final anySpecialFilled =
-        specialCriteria.any((c) => _controllers[c.id!]!.text.trim().isNotEmpty);
+        editableSpecialCriteria.any((c) => _controllers[c.id!]!.text.trim().isNotEmpty);
 
     return Scaffold(
       appBar: AppBar(
@@ -200,7 +205,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                   const Text('মাস নির্বাচন করুন', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   MonthPickerField(month: _month, year: _year, onChanged: _onMonthChanged),
-                  if (specialCriteria.isNotEmpty) ...[
+                  if (editableSpecialCriteria.isNotEmpty) ...[
                     const SizedBox(height: 20),
                     Container(
                       padding: const EdgeInsets.all(12),
@@ -215,17 +220,18 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                           Row(
                             children: [
                               const Expanded(
-                                child: Text('আদায় / বকেয়া', style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: Text('খরচ ও সিনিয়র ম্যানেজমেন্ট এ জমা',
+                                    style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                               if (hasTarget)
                                 Text(
-                                  'লক্ষ্যমাত্রা: ${CurrencyFormatter.format(widget.ward.targetAmount)}',
+                                  'লক্ষ্যমাত্রা: ${CurrencyFormatter.format(targetAmount)}',
                                   style: TextStyle(color: Colors.grey.shade700, fontSize: 12.5),
                                 ),
                             ],
                           ),
                           const SizedBox(height: 10),
-                          ...specialCriteria.map(_criteriaField),
+                          ...editableSpecialCriteria.map(_criteriaField),
                           if (hasTarget && anySpecialFilled)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -244,9 +250,9 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                                   Expanded(
                                     child: Text(
                                       matched
-                                          ? 'আদায় + বকেয়া লক্ষ্যমাত্রার সাথে মিলেছে'
-                                          : 'আদায় + বকেয়া = ${CurrencyFormatter.format(specialSum)} '
-                                              '— লক্ষ্যমাত্রা ${CurrencyFormatter.format(widget.ward.targetAmount)}',
+                                          ? 'লক্ষ্যমাত্রা − খরচ = জমা মিলেছে'
+                                          : 'প্রত্যাশিত জমা (লক্ষ্যমাত্রা − খরচ) = ${CurrencyFormatter.format(expectedDeposit)} '
+                                              '— প্রকৃত জমা ${CurrencyFormatter.format(deposit)}',
                                       style: const TextStyle(fontSize: 12.5),
                                     ),
                                   ),
