@@ -7,13 +7,11 @@ import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
-/// উচ্চ কর্তৃপক্ষে জমার হিসাব — a separate, per-Protisthan/month page
+/// প্রতিষ্ঠানের বাস্তব জমা খরচ — a separate, per-Protisthan/month page
 /// tracking how much of this Protisthan's collection was actually
 /// remitted upward: ১. বাস্তব জমা (auto, = sum of all wards' আয়−ব্যয়) −
-/// ২. {protisthan name} ব্যয় (manual) gives "উচ্চ কর্তৃপক্ষে বাস্তব জমা",
-/// which should equal ৩. প্রকৃত জমা (manual, the real recorded deposit —
-/// kept as a separate, independently-typed figure per the user's own
-/// preference, so the two can be cross-checked).
+/// ২. {protisthan name} ব্যয় (manual) gives "প্রতিষ্ঠানের বাস্তব জমা", which
+/// is always computed, not typed.
 class RemittanceScreen extends StatefulWidget {
   final Protisthan protisthan;
   const RemittanceScreen({super.key, required this.protisthan});
@@ -30,7 +28,9 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
 
   double _actualDepositTotal = 0;
   final _expenseCtrl = TextEditingController();
-  final _actualCtrl = TextEditingController();
+  // এই স্ক্রিন থেকে আর দেখানো/এডিট করা হয় না, কিন্তু আগে কেউ হাতে টাইপ করে
+  // থাকলে সেই পুরনো মান সেভের সময় মুছে না ফেলে অপরিবর্তিত রেখে দেওয়া হয়।
+  double _existingActualDepositAmount = 0;
   bool _loading = true;
   bool _saving = false;
 
@@ -45,7 +45,6 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
   @override
   void dispose() {
     _expenseCtrl.dispose();
-    _actualCtrl.dispose();
     super.dispose();
   }
 
@@ -61,9 +60,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
       _expenseCtrl.text = remittance == null || remittance.expenseAmount == 0
           ? ''
           : _trimZero(remittance.expenseAmount);
-      _actualCtrl.text = remittance == null || remittance.actualDepositAmount == 0
-          ? ''
-          : _trimZero(remittance.actualDepositAmount);
+      _existingActualDepositAmount = remittance?.actualDepositAmount ?? 0;
       _loading = false;
     });
   }
@@ -76,7 +73,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
         month: _month,
         year: _year,
         expenseAmount: double.tryParse(_expenseCtrl.text.trim()) ?? 0,
-        actualDepositAmount: double.tryParse(_actualCtrl.text.trim()) ?? 0,
+        actualDepositAmount: _existingActualDepositAmount,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -91,14 +88,10 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
   @override
   Widget build(BuildContext context) {
     final expense = double.tryParse(_expenseCtrl.text.trim()) ?? 0;
-    final actual = double.tryParse(_actualCtrl.text.trim()) ?? 0;
-    final higherManagementActualDeposit = _actualDepositTotal - expense;
-    final difference = actual - higherManagementActualDeposit;
-    final hasActual = _actualCtrl.text.trim().isNotEmpty;
-    final matched = difference.abs() < 0.005;
+    final protisthanActualDeposit = _actualDepositTotal - expense;
 
     return Scaffold(
-      appBar: AppBar(title: Text('উচ্চ কর্তৃপক্ষে জমা (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text('প্রতিষ্ঠানের বাস্তব জমা খরচ (${widget.protisthan.name})')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -133,49 +126,10 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 const Divider(),
                 const SizedBox(height: 4),
                 _StatRow(
-                  label: 'উচ্চ কর্তৃপক্ষে বাস্তব জমা (১ - ২)',
-                  value: CurrencyFormatter.format(higherManagementActualDeposit),
+                  label: 'প্রতিষ্ঠানের বাস্তব জমা (১ - ২)',
+                  value: CurrencyFormatter.format(protisthanActualDeposit),
                   bold: true,
                 ),
-                const SizedBox(height: 14),
-                TextField(
-                  controller: _actualCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '৩. উচ্চ কর্তৃপক্ষে প্রকৃত জমা (৳)',
-                    helperText: 'বাস্তবে যত টাকা জমা দেওয়া হয়েছে',
-                    border: OutlineInputBorder(),
-                  ),
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                  onChanged: (_) => setState(() {}),
-                ),
-                if (hasActual) ...[
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: (matched ? Colors.green : Colors.orange).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: matched ? Colors.green : Colors.orange),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          matched ? Icons.check_circle_outline : Icons.warning_amber_outlined,
-                          color: matched ? Colors.green : Colors.orange,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            matched
-                                ? 'উচ্চ কর্তৃপক্ষে বাস্তব জমার সাথে মিলেছে'
-                                : 'অমিল — পার্থক্য ${CurrencyFormatter.format(difference.abs())}',
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: _saving ? null : _save,

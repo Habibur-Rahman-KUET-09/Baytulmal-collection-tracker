@@ -59,7 +59,6 @@ void main() {
       actualDepositTotal: 9000,
       wardExpenseTotal: 3000,
       protisthanExpenseAmount: 2000,
-      actualDepositAmount: 7000,
     );
 
     final file = File(path);

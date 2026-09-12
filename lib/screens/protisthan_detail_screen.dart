@@ -19,7 +19,7 @@ import 'trend_screen.dart';
 import 'ward_management_screen.dart';
 
 /// Screen 3: প্রতিষ্ঠান বিস্তারিত — tabs for Ward list, Criteria shortcut,
-/// and Summary shortcuts (FR-1.5).
+/// and Report shortcuts (FR-1.5).
 class ProtisthanDetailScreen extends StatefulWidget {
   final Protisthan protisthan;
   const ProtisthanDetailScreen({super.key, required this.protisthan});
@@ -55,7 +55,7 @@ class _ProtisthanDetailScreenState extends State<ProtisthanDetailScreen>
           tabs: const [
             Tab(text: 'ওয়ার্ড সমূহ'),
             Tab(text: 'ক্রাইটেরিয়া'),
-            Tab(text: 'সামারি'),
+            Tab(text: 'রিপোর্ট'),
           ],
         ),
       ),
@@ -307,8 +307,8 @@ class _SummaryTab extends StatelessWidget {
         ),
         _SummaryCard(
           icon: Icons.account_balance_outlined,
-          title: 'উচ্চ কর্তৃপক্ষে জমা',
-          subtitle: 'মোট কালেকশন, খরচ ও প্রকৃত জমার হিসাব',
+          title: 'প্রতিষ্ঠানের বাস্তব জমা খরচ',
+          subtitle: 'সব ওয়ার্ডের বাস্তব জমা ও প্রতিষ্ঠানের ব্যয়ের হিসাব',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => RemittanceScreen(protisthan: protisthan)),
           ),

@@ -26,7 +26,6 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   double _actualDepositTotal = 0;
   double _wardExpenseTotal = 0;
   double _protisthanExpenseAmount = 0;
-  double _actualDepositAmount = 0;
   bool _loading = true;
   bool _exporting = false;
 
@@ -50,7 +49,6 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
       _actualDepositTotal = actualDepositTotal;
       _wardExpenseTotal = wardExpenseTotal;
       _protisthanExpenseAmount = remittance?.expenseAmount ?? 0;
-      _actualDepositAmount = remittance?.actualDepositAmount ?? 0;
       _loading = false;
     });
   }
@@ -67,7 +65,6 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         actualDepositTotal: _actualDepositTotal,
         wardExpenseTotal: _wardExpenseTotal,
         protisthanExpenseAmount: _protisthanExpenseAmount,
-        actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
       if (mounted) {
@@ -91,7 +88,6 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         actualDepositTotal: _actualDepositTotal,
         wardExpenseTotal: _wardExpenseTotal,
         protisthanExpenseAmount: _protisthanExpenseAmount,
-        actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
       if (mounted) {
@@ -115,7 +111,6 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         actualDepositTotal: _actualDepositTotal,
         wardExpenseTotal: _wardExpenseTotal,
         protisthanExpenseAmount: _protisthanExpenseAmount,
-        actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
       if (mounted) {

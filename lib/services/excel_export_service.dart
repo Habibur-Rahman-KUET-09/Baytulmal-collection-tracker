@@ -6,7 +6,6 @@ import 'package:share_plus/share_plus.dart';
 
 import '../db/database_helper.dart';
 import '../utils/bangla_utils.dart';
-import '../utils/currency_formatter.dart';
 
 /// Generates the Ward × Criteria matrix report as an .xlsx file (FR-8.8)
 /// and shares it via the Android share sheet (FR-8.9). Fully offline (FR-8.10).
@@ -19,7 +18,6 @@ class ExcelExportService {
     required double actualDepositTotal,
     required double wardExpenseTotal,
     required double protisthanExpenseAmount,
-    required double actualDepositAmount,
   }) async {
     final excel = Excel.createExcel();
     const sheetName = 'Report';
@@ -58,48 +56,40 @@ class ExcelExportService {
       DoubleCellValue(data.grandTotal),
     ]);
 
-    // Higher-management remittance summary (১ - ২ = "উচ্চ কর্তৃপক্ষে বাস্তব
-    // জমা", compared against the separately, manually-recorded ৩), matching
-    // the PDF report's box.
-    final higherManagementActualDeposit = actualDepositTotal - protisthanExpenseAmount;
-    final difference = actualDepositAmount - higherManagementActualDeposit;
-    final matched = difference.abs() < 0.005;
+    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "প্রতিষ্ঠানের বাস্তব জমা", always
+    // computed — no separate manually-typed figure anymore), matching the
+    // PDF report's box.
+    final protisthanActualDeposit = actualDepositTotal - protisthanExpenseAmount;
 
     sheet.appendRow([TextCellValue('')]);
     sheet.appendRow([TextCellValue('উচ্চ কর্তৃপক্ষে জমার হিসাব')]);
     sheet.appendRow([TextCellValue('১. বাস্তব জমা'), DoubleCellValue(actualDepositTotal)]);
     sheet.appendRow([TextCellValue('২. $protisthanName ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
     sheet.appendRow([
-      TextCellValue('উচ্চ কর্তৃপক্ষে বাস্তব জমা (১ - ২)'),
-      DoubleCellValue(higherManagementActualDeposit),
-    ]);
-    sheet.appendRow([TextCellValue('৩. উচ্চ কর্তৃপক্ষে প্রকৃত জমা'), DoubleCellValue(actualDepositAmount)]);
-    sheet.appendRow([
-      TextCellValue(matched
-          ? 'মিলেছে ✓'
-          : 'অমিল — পার্থক্য ${CurrencyFormatter.format(difference.abs(), withSymbol: false)}'),
+      TextCellValue('প্রতিষ্ঠানের বাস্তব জমা (১ - ২)'),
+      DoubleCellValue(protisthanActualDeposit),
     ]);
 
     // Second box: per-criteria totals for the Protisthan, but with the
-    // ৪টা special criteria collapsed into একটা "নিসাব" row (= Higher
-    // management এ বাস্তব জমা above) + separate ওয়ার্ডের ব্যয়ের যোগফল and
-    // {protisthanName} ব্যয় rows. This section's own total always equals
-    // the matrix table's grand total (সর্বমোট) above.
+    // ৪টা special criteria collapsed into একটা "প্রতিষ্ঠানের বাস্তব জমা"
+    // row (= উচ্চ কর্তৃপক্ষে জমার হিসাব বক্সের ফলাফল) + separate ওয়ার্ডের
+    // ব্যয়ের যোগফল and {protisthanName} ব্যয় rows. This section's own
+    // total always equals the matrix table's grand total (সর্বমোট) above.
     final normalCriteria = data.criteriaList.where((c) => !c.isSpecial).toList();
     final normalCriteriaTotal =
         normalCriteria.fold<double>(0, (sum, c) => sum + (data.colTotals[c.id!] ?? 0));
-    final nisabBoxTotal =
-        higherManagementActualDeposit + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
+    final totalBoxTotal =
+        protisthanActualDeposit + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
 
     sheet.appendRow([TextCellValue('')]);
-    sheet.appendRow([TextCellValue('ক্রাইটেরিয়া অনুযায়ী মোট')]);
-    sheet.appendRow([TextCellValue('নিসাব'), DoubleCellValue(higherManagementActualDeposit)]);
+    sheet.appendRow([TextCellValue('প্রতিষ্ঠান টোটাল হিসাব')]);
+    sheet.appendRow([TextCellValue('প্রতিষ্ঠানের বাস্তব জমা'), DoubleCellValue(protisthanActualDeposit)]);
     sheet.appendRow([TextCellValue('ওয়ার্ডের ব্যয়ের যোগফল'), DoubleCellValue(wardExpenseTotal)]);
     sheet.appendRow([TextCellValue('$protisthanName ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
     for (final c in normalCriteria) {
       sheet.appendRow([TextCellValue(c.name), DoubleCellValue(data.colTotals[c.id!] ?? 0)]);
     }
-    sheet.appendRow([TextCellValue('সর্বমোট'), DoubleCellValue(nisabBoxTotal)]);
+    sheet.appendRow([TextCellValue('সর্বমোট'), DoubleCellValue(totalBoxTotal)]);
 
     final bytes = excel.save();
     final dir = await getTemporaryDirectory();
@@ -122,7 +112,6 @@ class ExcelExportService {
     required double actualDepositTotal,
     required double wardExpenseTotal,
     required double protisthanExpenseAmount,
-    required double actualDepositAmount,
   }) async {
     final file = await generate(
       protisthanName: protisthanName,
@@ -132,7 +121,6 @@ class ExcelExportService {
       actualDepositTotal: actualDepositTotal,
       wardExpenseTotal: wardExpenseTotal,
       protisthanExpenseAmount: protisthanExpenseAmount,
-      actualDepositAmount: actualDepositAmount,
     );
     await SharePlus.instance.share(
       ShareParams(
