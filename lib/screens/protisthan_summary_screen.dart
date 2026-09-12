@@ -101,7 +101,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('সকল ওয়ার্ডের মোট নির্ধারিত লক্ষ্যমাত্রা', style: TextStyle(fontSize: 12.5)),
+                        const Text('সকল ওয়ার্ডের মোট ধার্যকৃত নিসাব', style: TextStyle(fontSize: 12.5)),
                         Text(
                           CurrencyFormatter.format(_targetTotal),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),

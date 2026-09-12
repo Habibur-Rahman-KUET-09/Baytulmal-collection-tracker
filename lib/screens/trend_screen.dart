@@ -51,7 +51,11 @@ class _TrendScreenState extends State<TrendScreen> {
   }
 
   Future<void> _init() async {
-    _criteriaList = await db.getCriteriaForProtisthan(widget.protisthan.id!);
+    final criteriaList = await db.getCriteriaForProtisthan(widget.protisthan.id!);
+    // ধার্যকৃত নিসাব ও বাস্তব জমার কোনো Entry নেই (দুটোই সবসময় হিসাব করে
+    // দেখানো হয়), তাই ট্রেন্ড হিসেবে বেছে নিলে সবসময় ০-ই দেখাবে — তাই এই
+    // দুটো এখানে বেছে নেওয়ার অপশন হিসেবে রাখা হচ্ছে না।
+    _criteriaList = criteriaList.where((c) => !c.hasNoEntry).toList();
     _wardList = await db.getWardsForProtisthan(widget.protisthan.id!);
     await _load();
   }

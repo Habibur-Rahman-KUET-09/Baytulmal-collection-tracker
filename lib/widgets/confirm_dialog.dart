@@ -89,7 +89,7 @@ class WardInputResult {
 }
 
 /// Add/rename dialog for a Ward — also collects/edits its fixed
-/// নির্ধারিত লক্ষ্যমাত্রা (special criteria ১, set once and not part of any
+/// ধার্যকৃত নিসাব (special criteria ১, set once and not part of any
 /// per-month Entry).
 Future<WardInputResult?> showWardInputDialog(
   BuildContext context, {
@@ -123,9 +123,9 @@ Future<WardInputResult?> showWardInputDialog(
             TextFormField(
               controller: targetCtrl,
               decoration: const InputDecoration(
-                labelText: 'নির্ধারিত লক্ষ্যমাত্রা (৳)',
-                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের খরচ ও জমার '
-                    'সাথে মিলিয়ে দেখা হবে (লক্ষ্যমাত্রা − খরচ = জমা)।',
+                labelText: 'ধার্যকৃত নিসাব (৳)',
+                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের আয় ও ব্যয়ের '
+                    'সাথে মিলিয়ে দেখা হবে (আয় − ব্যয় = বাস্তব জমা)।',
                 helperMaxLines: 2,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),

@@ -99,7 +99,7 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                         title: Text(c.name),
                         subtitle: c.isSpecial
                             ? const Text(
-                                'বিশেষ ক্রাইটেরিয়া — নির্ধারিত লক্ষ্যমাত্রার সাথে সম্পর্কিত',
+                                'বিশেষ ক্রাইটেরিয়া — ধার্যকৃত নিসাবের সাথে সম্পর্কিত',
                                 style: TextStyle(fontSize: 11.5),
                               )
                             : null,

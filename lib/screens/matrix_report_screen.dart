@@ -23,8 +23,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   late int _month;
   late int _year;
   MatrixReportData? _data;
-  double _totalCollection = 0;
-  double _expenseAmount = 0;
+  double _actualDepositTotal = 0;
+  double _wardExpenseTotal = 0;
+  double _protisthanExpenseAmount = 0;
   double _actualDepositAmount = 0;
   bool _loading = true;
   bool _exporting = false;
@@ -40,13 +41,15 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final data = await db.getMatrixReport(widget.protisthan.id!, _month, _year);
-    final total = await db.getProtisthanTotal(widget.protisthan.id!, _month, _year);
+    final actualDepositTotal = await db.getProtisthanActualDepositTotal(widget.protisthan.id!, _month, _year);
+    final wardExpenseTotal = await db.getWardExpenseTotal(widget.protisthan.id!, _month, _year);
     final remittance = await db.getRemittance(widget.protisthan.id!, _month, _year);
     if (!mounted) return;
     setState(() {
       _data = data;
-      _totalCollection = total;
-      _expenseAmount = remittance?.expenseAmount ?? 0;
+      _actualDepositTotal = actualDepositTotal;
+      _wardExpenseTotal = wardExpenseTotal;
+      _protisthanExpenseAmount = remittance?.expenseAmount ?? 0;
       _actualDepositAmount = remittance?.actualDepositAmount ?? 0;
       _loading = false;
     });
@@ -61,8 +64,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         month: _month,
         year: _year,
         data: _data!,
-        totalCollection: _totalCollection,
-        expenseAmount: _expenseAmount,
+        actualDepositTotal: _actualDepositTotal,
+        wardExpenseTotal: _wardExpenseTotal,
+        protisthanExpenseAmount: _protisthanExpenseAmount,
         actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
@@ -84,8 +88,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         month: _month,
         year: _year,
         data: _data!,
-        totalCollection: _totalCollection,
-        expenseAmount: _expenseAmount,
+        actualDepositTotal: _actualDepositTotal,
+        wardExpenseTotal: _wardExpenseTotal,
+        protisthanExpenseAmount: _protisthanExpenseAmount,
         actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {
@@ -107,8 +112,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
         month: _month,
         year: _year,
         data: _data!,
-        totalCollection: _totalCollection,
-        expenseAmount: _expenseAmount,
+        actualDepositTotal: _actualDepositTotal,
+        wardExpenseTotal: _wardExpenseTotal,
+        protisthanExpenseAmount: _protisthanExpenseAmount,
         actualDepositAmount: _actualDepositAmount,
       );
     } catch (e) {

@@ -125,17 +125,15 @@ class _TargetMatchCard extends StatelessWidget {
   final List<MapEntry<Criteria, double>> breakdown;
   const _TargetMatchCard({required this.target, required this.breakdown});
 
-  double _sumOf(int specialOrder) {
-    final entry = breakdown.where((e) => e.key.specialOrder == specialOrder);
+  double get _actualDeposit {
+    final entry = breakdown.where((e) => e.key.isComputedDeposit);
     return entry.isEmpty ? 0 : entry.first.value;
   }
 
   @override
   Widget build(BuildContext context) {
-    final expense = _sumOf(2);
-    final deposit = _sumOf(3);
-    final expectedDeposit = target - expense;
-    final matched = (expectedDeposit - deposit).abs() < 0.005;
+    final actualDeposit = _actualDeposit;
+    final matched = (target - actualDeposit).abs() < 0.005;
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -152,8 +150,8 @@ class _TargetMatchCard extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'নির্ধারিত লক্ষ্যমাত্রা: ${CurrencyFormatter.format(target)}'
-              '${matched ? ' — লক্ষ্যমাত্রা − খরচ = জমা মিলেছে' : ' — প্রত্যাশিত জমা: ${CurrencyFormatter.format(expectedDeposit)}, প্রকৃত জমা: ${CurrencyFormatter.format(deposit)}'}',
+              'ধার্যকৃত নিসাব: ${CurrencyFormatter.format(target)}'
+              '${matched ? ' — বাস্তব জমার সাথে মিলেছে' : ' — বাস্তব জমা: ${CurrencyFormatter.format(actualDeposit)}'}',
               style: const TextStyle(fontSize: 12.5),
             ),
           ),

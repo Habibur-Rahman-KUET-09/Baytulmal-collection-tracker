@@ -36,8 +36,9 @@ class PdfExportService {
     required int month,
     required int year,
     required MatrixReportData data,
-    required double totalCollection,
-    required double expenseAmount,
+    required double actualDepositTotal,
+    required double wardExpenseTotal,
+    required double protisthanExpenseAmount,
     required double actualDepositAmount,
   }) async {
     await _ensureFonts();
@@ -64,7 +65,8 @@ class PdfExportService {
     final subtitle = await label('$protisthanName — ${BanglaMonths.label(month, year)}', fontSize: 12);
     final footerNote = await label(
       'নিচের-ডানদিকের ঘর = ওয়ার্ড টোটালের যোগফল = ক্রাইটেরিয়া টোটালের যোগফল '
-      '(লক্ষ্যমাত্রা বাদে — এটি কালেকশনের অংশ নয়, শুধু তুলনার জন্য দেখানো হয়েছে)',
+      '(ধার্যকৃত নিসাব ও আয় বাদে — এই দুটো তুলনার জন্য দেখানো হয়েছে, আয়ের হিসাব '
+      'ব্যয় ও বাস্তব জমার মধ্য দিয়েই মোটে যুক্ত হয়ে যায়)',
       fontSize: 9,
     );
 
@@ -110,12 +112,14 @@ class PdfExportService {
       ],
     );
 
-    // Higher-management remittance summary (১ - ২ = ৩):
-    //   ১. মোট কালেকশন (auto, from Entry data)
-    //   ২. মোট খরচ (manually entered)
-    //   ৩. প্রকৃত জমা (manually entered, actually deposited upward)
-    final expectedDeposit = totalCollection - expenseAmount;
-    final difference = actualDepositAmount - expectedDeposit;
+    // Higher-management remittance summary (১ - ২ = "উচ্চ কর্তৃপক্ষে বাস্তব
+    // জমা", compared against the separately, manually-recorded ৩):
+    //   ১. বাস্তব জমা (auto — sum of all wards' আয় − ব্যয়)
+    //   ২. {protisthanName} ব্যয় (manually entered)
+    //   ৩. উচ্চ কর্তৃপক্ষে প্রকৃত জমা (manually entered — kept independent so
+    //      it can be cross-checked against the auto-calculated figure)
+    final higherManagementActualDeposit = actualDepositTotal - protisthanExpenseAmount;
+    final difference = actualDepositAmount - higherManagementActualDeposit;
     final matched = difference.abs() < 0.005;
 
     final remittanceHeading = await label('উচ্চ কর্তৃপক্ষে জমার হিসাব', fontSize: 13, bold: true);
@@ -123,9 +127,9 @@ class PdfExportService {
     // package:pdf's native text also mis-renders that glyph, and the report
     // header/title already establishes these are all BDT amounts.
     final remittanceLabels = await Future.wait([
-      label('১. মোট কালেকশন'),
-      label('২. মোট খরচ'),
-      label('প্রত্যাশিত জমা (১ - ২)', bold: true),
+      label('১. বাস্তব জমা'),
+      label('২. $protisthanName ব্যয়'),
+      label('উচ্চ কর্তৃপক্ষে বাস্তব জমা (১ - ২)', bold: true),
       label('৩. উচ্চ কর্তৃপক্ষে প্রকৃত জমা', bold: true),
       label(matched
           // No "✓" here: NotoSansBengali via our dart:ui rasterization
@@ -149,6 +153,24 @@ class PdfExportService {
       );
     }
 
+    // Second box (bottom-right): per-criteria totals for the Protisthan,
+    // but with the ৪টা special criteria collapsed into একটা "নিসাব" row
+    // (= উচ্চ কর্তৃপক্ষে বাস্তব জমা above) + separate ওয়ার্ডের ব্যয়ের
+    // যোগফল and {protisthanName} ব্যয় rows. This box's own total always
+    // equals the matrix table's grand total (সর্বমোট) above — see
+    // DatabaseHelper.getMatrixReport's row/grand-total exclusion rule.
+    final normalCriteria = data.criteriaList.where((c) => !c.isSpecial).toList();
+    final nisabBoxHeading = await label('ক্রাইটেরিয়া অনুযায়ী মোট', fontSize: 13, bold: true);
+    final nisabLabel = await label('নিসাব');
+    final wardExpenseLabel = await label('ওয়ার্ডের ব্যয়ের যোগফল');
+    final protisthanExpenseLabel = await label('$protisthanName ব্যয়');
+    final normalCriteriaLabels = await Future.wait(normalCriteria.map((c) => label(c.name)));
+    final nisabBoxTotalLabel = await label('সর্বমোট', bold: true);
+
+    final normalCriteriaTotal = normalCriteria.fold<double>(0, (sum, c) => sum + (data.colTotals[c.id!] ?? 0));
+    final nisabBoxTotal =
+        higherManagementActualDeposit + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
+
     doc.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4.landscape,
@@ -164,27 +186,55 @@ class PdfExportService {
           pw.SizedBox(height: 12),
           footerNote,
           pw.SizedBox(height: 24),
-          pw.Container(
-            width: 280,
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(
-              border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
-              borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
-            ),
-            child: pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                remittanceHeading,
-                pw.SizedBox(height: 8),
-                remittanceRow(remittanceLabels[0], totalCollection),
-                remittanceRow(remittanceLabels[1], expenseAmount),
-                pw.Divider(color: PdfColors.grey400, height: 12),
-                remittanceRow(remittanceLabels[2], expectedDeposit, bold: true),
-                remittanceRow(remittanceLabels[3], actualDepositAmount, bold: true),
-                pw.SizedBox(height: 6),
-                remittanceLabels[4],
-              ],
-            ),
+          pw.Row(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Container(
+                width: 280,
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    remittanceHeading,
+                    pw.SizedBox(height: 8),
+                    remittanceRow(remittanceLabels[0], actualDepositTotal),
+                    remittanceRow(remittanceLabels[1], protisthanExpenseAmount),
+                    pw.Divider(color: PdfColors.grey400, height: 12),
+                    remittanceRow(remittanceLabels[2], higherManagementActualDeposit, bold: true),
+                    remittanceRow(remittanceLabels[3], actualDepositAmount, bold: true),
+                    pw.SizedBox(height: 6),
+                    remittanceLabels[4],
+                  ],
+                ),
+              ),
+              pw.SizedBox(width: 16),
+              pw.Container(
+                width: 280,
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: PdfColors.grey400, width: 0.5),
+                  borderRadius: const pw.BorderRadius.all(pw.Radius.circular(4)),
+                ),
+                child: pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    nisabBoxHeading,
+                    pw.SizedBox(height: 8),
+                    remittanceRow(nisabLabel, higherManagementActualDeposit),
+                    remittanceRow(wardExpenseLabel, wardExpenseTotal),
+                    remittanceRow(protisthanExpenseLabel, protisthanExpenseAmount),
+                    for (var i = 0; i < normalCriteria.length; i++)
+                      remittanceRow(normalCriteriaLabels[i], data.colTotals[normalCriteria[i].id!] ?? 0),
+                    pw.Divider(color: PdfColors.grey400, height: 12),
+                    remittanceRow(nisabBoxTotalLabel, nisabBoxTotal, bold: true),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -201,8 +251,9 @@ class PdfExportService {
     required int month,
     required int year,
     required MatrixReportData data,
-    required double totalCollection,
-    required double expenseAmount,
+    required double actualDepositTotal,
+    required double wardExpenseTotal,
+    required double protisthanExpenseAmount,
     required double actualDepositAmount,
   }) async {
     final doc = await _buildDocument(
@@ -210,8 +261,9 @@ class PdfExportService {
       month: month,
       year: year,
       data: data,
-      totalCollection: totalCollection,
-      expenseAmount: expenseAmount,
+      actualDepositTotal: actualDepositTotal,
+      wardExpenseTotal: wardExpenseTotal,
+      protisthanExpenseAmount: protisthanExpenseAmount,
       actualDepositAmount: actualDepositAmount,
     );
     await Printing.sharePdf(
@@ -233,8 +285,9 @@ class PdfExportService {
     required int month,
     required int year,
     required MatrixReportData data,
-    double totalCollection = 0,
-    double expenseAmount = 0,
+    double actualDepositTotal = 0,
+    double wardExpenseTotal = 0,
+    double protisthanExpenseAmount = 0,
     double actualDepositAmount = 0,
   }) async {
     final doc = await _buildDocument(
@@ -242,8 +295,9 @@ class PdfExportService {
       month: month,
       year: year,
       data: data,
-      totalCollection: totalCollection,
-      expenseAmount: expenseAmount,
+      actualDepositTotal: actualDepositTotal,
+      wardExpenseTotal: wardExpenseTotal,
+      protisthanExpenseAmount: protisthanExpenseAmount,
       actualDepositAmount: actualDepositAmount,
     );
     await File(path).writeAsBytes(await doc.save());
@@ -255,8 +309,9 @@ class PdfExportService {
     required int month,
     required int year,
     required MatrixReportData data,
-    required double totalCollection,
-    required double expenseAmount,
+    required double actualDepositTotal,
+    required double wardExpenseTotal,
+    required double protisthanExpenseAmount,
     required double actualDepositAmount,
   }) async {
     final doc = await _buildDocument(
@@ -264,8 +319,9 @@ class PdfExportService {
       month: month,
       year: year,
       data: data,
-      totalCollection: totalCollection,
-      expenseAmount: expenseAmount,
+      actualDepositTotal: actualDepositTotal,
+      wardExpenseTotal: wardExpenseTotal,
+      protisthanExpenseAmount: protisthanExpenseAmount,
       actualDepositAmount: actualDepositAmount,
     );
     await Printing.layoutPdf(onLayout: (format) => doc.save());

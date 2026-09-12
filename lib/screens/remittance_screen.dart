@@ -9,8 +9,11 @@ import '../widgets/month_picker_field.dart';
 
 /// উচ্চ কর্তৃপক্ষে জমার হিসাব — a separate, per-Protisthan/month page
 /// tracking how much of this Protisthan's collection was actually
-/// remitted upward: ১. মোট কালেকশন (auto) − ২. মোট খরচ (manual) should
-/// equal ৩. প্রকৃত জমা (manual, the real recorded deposit).
+/// remitted upward: ১. বাস্তব জমা (auto, = sum of all wards' আয়−ব্যয়) −
+/// ২. {protisthan name} ব্যয় (manual) gives "উচ্চ কর্তৃপক্ষে বাস্তব জমা",
+/// which should equal ৩. প্রকৃত জমা (manual, the real recorded deposit —
+/// kept as a separate, independently-typed figure per the user's own
+/// preference, so the two can be cross-checked).
 class RemittanceScreen extends StatefulWidget {
   final Protisthan protisthan;
   const RemittanceScreen({super.key, required this.protisthan});
@@ -25,7 +28,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
   late int _month;
   late int _year;
 
-  double _totalCollection = 0;
+  double _actualDepositTotal = 0;
   final _expenseCtrl = TextEditingController();
   final _actualCtrl = TextEditingController();
   bool _loading = true;
@@ -50,11 +53,11 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final total = await db.getProtisthanTotal(widget.protisthan.id!, _month, _year);
+    final total = await db.getProtisthanActualDepositTotal(widget.protisthan.id!, _month, _year);
     final remittance = await db.getRemittance(widget.protisthan.id!, _month, _year);
     if (!mounted) return;
     setState(() {
-      _totalCollection = total;
+      _actualDepositTotal = total;
       _expenseCtrl.text = remittance == null || remittance.expenseAmount == 0
           ? ''
           : _trimZero(remittance.expenseAmount);
@@ -89,8 +92,8 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
   Widget build(BuildContext context) {
     final expense = double.tryParse(_expenseCtrl.text.trim()) ?? 0;
     final actual = double.tryParse(_actualCtrl.text.trim()) ?? 0;
-    final expected = _totalCollection - expense;
-    final difference = actual - expected;
+    final higherManagementActualDeposit = _actualDepositTotal - expense;
+    final difference = actual - higherManagementActualDeposit;
     final hasActual = _actualCtrl.text.trim().isNotEmpty;
     final matched = difference.abs() < 0.005;
 
@@ -113,14 +116,14 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                _StatRow(label: '১. মোট কালেকশন', value: CurrencyFormatter.format(_totalCollection)),
+                _StatRow(label: '১. বাস্তব জমা', value: CurrencyFormatter.format(_actualDepositTotal)),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _expenseCtrl,
-                  decoration: const InputDecoration(
-                    labelText: '২. মোট খরচ (৳)',
+                  decoration: InputDecoration(
+                    labelText: '২. ${widget.protisthan.name} ব্যয় (৳)',
                     helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে',
-                    border: OutlineInputBorder(),
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
@@ -129,7 +132,11 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 const SizedBox(height: 18),
                 const Divider(),
                 const SizedBox(height: 4),
-                _StatRow(label: 'প্রত্যাশিত জমা (১ - ২)', value: CurrencyFormatter.format(expected), bold: true),
+                _StatRow(
+                  label: 'উচ্চ কর্তৃপক্ষে বাস্তব জমা (১ - ২)',
+                  value: CurrencyFormatter.format(higherManagementActualDeposit),
+                  bold: true,
+                ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _actualCtrl,
@@ -161,7 +168,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                         Expanded(
                           child: Text(
                             matched
-                                ? 'প্রত্যাশিত জমার সাথে মিলেছে'
+                                ? 'উচ্চ কর্তৃপক্ষে বাস্তব জমার সাথে মিলেছে'
                                 : 'অমিল — পার্থক্য ${CurrencyFormatter.format(difference.abs())}',
                           ),
                         ),

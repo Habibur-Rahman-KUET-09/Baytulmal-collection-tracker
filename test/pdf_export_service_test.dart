@@ -27,22 +27,26 @@ void main() {
       ..addFont(Future.value(bold));
     await loader.load();
 
-    final w1 = Ward(id: 1, uuid: 'w1', protisthanId: 1, name: 'ওয়ার্ড ১', createdAt: '');
-    final w2 = Ward(id: 2, uuid: 'w2', protisthanId: 1, name: 'ওয়ার্ড ২', createdAt: '');
-    final c1 = Criteria(id: 1, uuid: 'c1', protisthanId: 1, name: 'দোকান ভাড়া', createdAt: '');
-    final c2 = Criteria(id: 2, uuid: 'c2', protisthanId: 1, name: 'খরচ', createdAt: '', specialOrder: 2);
-    final c3 = Criteria(id: 3, uuid: 'c3', protisthanId: 1, name: 'সিনিয়র ম্যানেজমেন্ট এ জমা', createdAt: '', specialOrder: 3);
+    final w1 = Ward(id: 1, uuid: 'w1', protisthanId: 1, name: 'ওয়ার্ড ১', createdAt: '', targetAmount: 20000);
+    final w2 = Ward(id: 2, uuid: 'w2', protisthanId: 1, name: 'ওয়ার্ড ২', createdAt: '', targetAmount: 15000);
+    final cNisab = Criteria(id: 1, uuid: 'c1', protisthanId: 1, name: 'ধার্যকৃত নিসাব', createdAt: '', specialOrder: 1);
+    final cIncome = Criteria(id: 2, uuid: 'c2', protisthanId: 1, name: 'আয়', createdAt: '', specialOrder: 2);
+    final cExpense = Criteria(id: 3, uuid: 'c3', protisthanId: 1, name: 'ব্যয়', createdAt: '', specialOrder: 3);
+    final cDeposit = Criteria(id: 4, uuid: 'c4', protisthanId: 1, name: 'বাস্তব জমা', createdAt: '', specialOrder: 4);
+    final cRent = Criteria(id: 5, uuid: 'c5', protisthanId: 1, name: 'দোকান ভাড়া', createdAt: '');
 
     final data = MatrixReportData(
       wards: [w1, w2],
-      criteriaList: [c1, c2, c3],
+      criteriaList: [cNisab, cIncome, cExpense, cDeposit, cRent],
       cells: {
-        1: {1: 18000, 2: 5500},
-        2: {1: 15000, 2: 4000, 3: 3000},
+        1: {1: 20000, 2: 8000, 3: 2000, 4: 6000, 5: 5500},
+        2: {1: 15000, 2: 4000, 3: 1000, 4: 3000, 5: 3000},
       },
-      rowTotals: {1: 23500, 2: 22000},
-      colTotals: {1: 33000, 2: 9500, 3: 3000},
-      grandTotal: 45500,
+      // ওয়ার্ড টোটাল = ব্যয়(৩) + বাস্তব জমা(৪) + normal, ধার্যকৃত নিসাব(১) ও
+      // আয়(২) বাদে।
+      rowTotals: {1: 13500, 2: 7000},
+      colTotals: {1: 35000, 2: 12000, 3: 3000, 4: 9000, 5: 8500},
+      grandTotal: 20500,
     );
 
     final path = '${Directory.systemTemp.path}/pdf_export_service_test.pdf';
@@ -52,9 +56,10 @@ void main() {
       month: 9,
       year: 2026,
       data: data,
-      totalCollection: 45500,
-      expenseAmount: 8000,
-      actualDepositAmount: 37000,
+      actualDepositTotal: 9000,
+      wardExpenseTotal: 3000,
+      protisthanExpenseAmount: 2000,
+      actualDepositAmount: 7000,
     );
 
     final file = File(path);

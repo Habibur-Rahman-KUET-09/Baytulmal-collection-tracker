@@ -15,12 +15,12 @@ import 'ward_summary_screen.dart';
 
 /// Screen 6: ডেটা এন্ট্রি ফর্ম — FR-4.1 .. FR-4.6.
 ///
-/// The Protisthan's special খরচ/সিনিয়র ম্যানেজমেন্ট এ জমা criteria are
-/// shown first, in a highlighted section with a live check against the
-/// Ward's fixed লক্ষ্যমাত্রা (লক্ষ্যমাত্রা − খরচ = জমা). লক্ষ্যমাত্রা itself
-/// has no input here — it's fixed at ward creation, shown only as a
-/// reference figure. Every other criteria follows exactly as before,
-/// unaffected.
+/// The Protisthan's special আয়/ব্যয় criteria are shown first, in a
+/// highlighted section with a live-computed বাস্তব জমা (= আয় − ব্যয়) and a
+/// check against the Ward's fixed ধার্যকৃত নিসাব. ধার্যকৃত নিসাব ও বাস্তব
+/// জমা — এই দুটোর কোনো ইনপুট এখানে নেই: নিসাব ওয়ার্ড তৈরির সময় ফিক্সড হয়,
+/// আর বাস্তব জমা সবসময় আয়-ব্যয় থেকে হিসাব হয় — দুটোই শুধু রেফারেন্স হিসেবে
+/// দেখানো হয়। Every other criteria follows exactly as before, unaffected.
 class EntryFormScreen extends StatefulWidget {
   final Ward ward;
   final Protisthan protisthan;
@@ -76,7 +76,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     }
     _controllers.clear();
     for (final c in criteriaList) {
-      if (c.isFixedTarget) continue; // no Entry — always shown from ward.targetAmount
+      if (c.hasNoEntry) continue; // ধার্যকৃত নিসাব/বাস্তব জমা — কোনো Entry নেই
       final value = existing[c.id];
       _controllers[c.id!] = TextEditingController(
         text: value == null ? '' : _trimZero(value),
@@ -109,7 +109,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     final appData = context.read<AppDataProvider>();
     try {
       for (final c in _criteriaList) {
-        if (c.isFixedTarget) continue;
+        if (c.hasNoEntry) continue;
         final text = _controllers[c.id!]!.text.trim();
         final amount = text.isEmpty ? null : double.parse(text);
         await db.saveEntry(
@@ -157,7 +157,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final editableSpecialCriteria = _criteriaList.where((c) => c.isSpecial && !c.isFixedTarget).toList();
+    final editableSpecialCriteria = _criteriaList.where((c) => c.isSpecial && !c.hasNoEntry).toList();
     final normalCriteria = _criteriaList.where((c) => !c.isSpecial).toList();
     final targetAmount = widget.ward.targetAmount;
     final hasTarget = targetAmount > 0;
@@ -168,10 +168,10 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       return double.tryParse(_controllers[c.first.id!]!.text.trim()) ?? 0;
     }
 
-    final expense = sumOf(2);
-    final deposit = sumOf(3);
-    final expectedDeposit = targetAmount - expense;
-    final matched = hasTarget && (expectedDeposit - deposit).abs() < 0.005;
+    final income = sumOf(2);
+    final expense = sumOf(3);
+    final actualDeposit = income - expense;
+    final matched = hasTarget && (targetAmount - actualDeposit).abs() < 0.005;
     final anySpecialFilled =
         editableSpecialCriteria.any((c) => _controllers[c.id!]!.text.trim().isNotEmpty);
 
@@ -220,39 +220,46 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                           Row(
                             children: [
                               const Expanded(
-                                child: Text('খরচ ও সিনিয়র ম্যানেজমেন্ট এ জমা',
-                                    style: TextStyle(fontWeight: FontWeight.bold)),
+                                child: Text('আয় ও ব্যয়', style: TextStyle(fontWeight: FontWeight.bold)),
                               ),
                               if (hasTarget)
                                 Text(
-                                  'লক্ষ্যমাত্রা: ${CurrencyFormatter.format(targetAmount)}',
+                                  'ধার্যকৃত নিসাব: ${CurrencyFormatter.format(targetAmount)}',
                                   style: TextStyle(color: Colors.grey.shade700, fontSize: 12.5),
                                 ),
                             ],
                           ),
                           const SizedBox(height: 10),
                           ...editableSpecialCriteria.map(_criteriaField),
-                          if (hasTarget && anySpecialFilled)
+                          if (anySpecialFilled)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                               decoration: BoxDecoration(
-                                color: (matched ? Colors.green : Colors.orange).withValues(alpha: 0.12),
+                                color: (hasTarget ? (matched ? Colors.green : Colors.orange) : Colors.blueGrey)
+                                    .withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Row(
                                 children: [
                                   Icon(
-                                    matched ? Icons.check_circle_outline : Icons.info_outline,
+                                    !hasTarget
+                                        ? Icons.info_outline
+                                        : matched
+                                            ? Icons.check_circle_outline
+                                            : Icons.info_outline,
                                     size: 18,
-                                    color: matched ? Colors.green : Colors.orange,
+                                    color: hasTarget ? (matched ? Colors.green : Colors.orange) : Colors.blueGrey,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      matched
-                                          ? 'লক্ষ্যমাত্রা − খরচ = জমা মিলেছে'
-                                          : 'প্রত্যাশিত জমা (লক্ষ্যমাত্রা − খরচ) = ${CurrencyFormatter.format(expectedDeposit)} '
-                                              '— প্রকৃত জমা ${CurrencyFormatter.format(deposit)}',
+                                      !hasTarget
+                                          ? 'বাস্তব জমা (আয় − ব্যয়) = ${CurrencyFormatter.format(actualDeposit)}'
+                                          : matched
+                                              ? 'বাস্তব জমা (আয় − ব্যয়) = ${CurrencyFormatter.format(actualDeposit)} '
+                                                  '— ধার্যকৃত নিসাবের সাথে মিলেছে'
+                                              : 'বাস্তব জমা (আয় − ব্যয়) = ${CurrencyFormatter.format(actualDeposit)} '
+                                                  '— ধার্যকৃত নিসাব ${CurrencyFormatter.format(targetAmount)}',
                                       style: const TextStyle(fontSize: 12.5),
                                     ),
                                   ),

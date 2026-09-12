@@ -5,9 +5,9 @@ class Ward {
   final String name;
   final String createdAt;
 
-  /// Special criteria #1 (নির্ধারিত লক্ষ্যমাত্রা): a fixed BDT value set once
-  /// when the ward is created (editable later), not a per-month Entry. Kept
-  /// out of every collection total (ward/protisthan/matrix sums) — it's a
+  /// Special criteria #1 (ধার্যকৃত নিসাব): a fixed BDT value set once when
+  /// the ward is created (editable later), not a per-month Entry. Kept out
+  /// of every collection total (ward/protisthan/matrix sums) — it's a
   /// reference target, not money actually collected.
   final double targetAmount;
 

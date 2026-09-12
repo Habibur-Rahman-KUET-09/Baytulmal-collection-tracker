@@ -100,7 +100,7 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                       child: ListTile(
                         title: Text(w.name),
                         subtitle: w.targetAmount > 0
-                            ? Text('লক্ষ্যমাত্রা: ${CurrencyFormatter.format(w.targetAmount)}')
+                            ? Text('ধার্যকৃত নিসাব: ${CurrencyFormatter.format(w.targetAmount)}')
                             : null,
                         trailing: Row(
                           mainAxisSize: MainAxisSize.min,

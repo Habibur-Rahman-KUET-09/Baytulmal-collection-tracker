@@ -5,15 +5,20 @@ class Criteria {
   final String name;
   final String createdAt;
 
-  /// Marks this as one of the three "special" criteria that together
-  /// satisfy লক্ষ্যমাত্রা − খরচ = জমা:
-  ///   ১ = লক্ষ্যমাত্রা — not backed by an Entry at all; its value is
+  /// Marks this as one of the four "special" criteria per ward, together
+  /// satisfying আয় − ব্যয় = বাস্তব জমা:
+  ///   ১ = ধার্যকৃত নিসাব — not backed by an Entry at all; its value is
   ///       always the ward's fixed [Ward.targetAmount], fixed at ward
-  ///       creation and never re-typed per month. Excluded from every
-  ///       row/column/grand total (it's a reference figure, not money
-  ///       actually collected) — see [DatabaseHelper.getMatrixReport].
-  ///   ২ = খরচ — an ordinary per-month Entry.
-  ///   ৩ = সিনিয়র ম্যানেজমেন্ট এ জমা — an ordinary per-month Entry.
+  ///       creation and never re-typed per month.
+  ///   ২ = আয় — an ordinary per-month Entry.
+  ///   ৩ = ব্যয় — an ordinary per-month Entry.
+  ///   ৪ = বাস্তব জমা — not backed by an Entry either; always computed as
+  ///       আয়(২) − ব্যয়(৩) for that ward+month.
+  /// ১ and ২ are excluded from every ward/matrix row+grand total (see
+  /// [DatabaseHelper.getMatrixReport]) — ১ is a reference figure rather
+  /// than money collected, and ২ doesn't need to be summed directly since
+  /// its value already flows through via ৩+৪ (৩ + ৪ = ব্যয় + (আয়−ব্যয়) =
+  /// আয়, so counting ৩ and ৪ nets out to exactly ২ without double-counting).
   /// `null` means a normal, user-defined criteria. ২ and ৩ otherwise behave
   /// exactly like any other criteria (same Entry rows, same matrix/summary
   /// aggregation) — this flag only changes how they're presented (ordering,
@@ -31,9 +36,17 @@ class Criteria {
 
   bool get isSpecial => specialOrder != null;
 
-  /// লক্ষ্যমাত্রা — the one special criteria with no Entry of its own;
-  /// its value always comes from [Ward.targetAmount] instead.
+  /// ধার্যকৃত নিসাব — its value always comes from [Ward.targetAmount],
+  /// never an Entry.
   bool get isFixedTarget => specialOrder == 1;
+
+  /// বাস্তব জমা — its value is always আয়(২) − ব্যয়(৩) for that ward+month,
+  /// never an Entry.
+  bool get isComputedDeposit => specialOrder == 4;
+
+  /// Neither ধার্যকৃত নিসাব nor বাস্তব জমা ever has an Entry — both are
+  /// always computed/derived instead of typed.
+  bool get hasNoEntry => isFixedTarget || isComputedDeposit;
 
   Criteria copyWith({
     int? id,

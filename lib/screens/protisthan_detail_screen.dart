@@ -171,7 +171,7 @@ class _WardsTabState extends State<_WardsTab> {
                           title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
                             '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? '৳ ০ (খালি)' : CurrencyFormatter.format(total)}'
-                            '${w.targetAmount > 0 ? '  •  লক্ষ্যমাত্রা ${CurrencyFormatter.format(w.targetAmount)}' : ''}',
+                            '${w.targetAmount > 0 ? '  •  ধার্যকৃত নিসাব ${CurrencyFormatter.format(w.targetAmount)}' : ''}',
                           ),
                           trailing: PopupMenuButton<String>(
                             onSelected: (value) {

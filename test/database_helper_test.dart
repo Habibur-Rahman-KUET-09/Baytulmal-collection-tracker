@@ -232,21 +232,24 @@ void main() {
     expect(await db.getWardTotal(wId, 9, 2026), 4321);
   });
 
-  test('insertProtisthan auto-seeds the লক্ষ্যমাত্রা/খরচ/জমা special criteria', () async {
+  test('insertProtisthan auto-seeds the ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা special criteria', () async {
     final pId = await addProtisthan('স্পেশাল ক্রাইটেরিয়া টেস্ট');
 
     final criteria = await db.getCriteriaForProtisthan(pId);
 
-    expect(criteria, hasLength(3));
+    expect(criteria, hasLength(4));
     expect(criteria.every((c) => c.isSpecial), isTrue);
-    expect(criteria[0].name, 'লক্ষ্যমাত্রা');
+    expect(criteria[0].name, 'ধার্যকৃত নিসাব');
     expect(criteria[0].specialOrder, 1);
     expect(criteria[0].isFixedTarget, isTrue);
-    expect(criteria[1].name, 'খরচ');
+    expect(criteria[1].name, 'আয়');
     expect(criteria[1].specialOrder, 2);
     expect(criteria[1].isFixedTarget, isFalse);
-    expect(criteria[2].name, 'সিনিয়র ম্যানেজমেন্ট এ জমা');
+    expect(criteria[2].name, 'ব্যয়');
     expect(criteria[2].specialOrder, 3);
+    expect(criteria[3].name, 'বাস্তব জমা');
+    expect(criteria[3].specialOrder, 4);
+    expect(criteria[3].isComputedDeposit, isTrue);
   });
 
   test('special criteria always sort first regardless of insertion order', () async {
@@ -257,15 +260,16 @@ void main() {
 
     final criteria = await db.getCriteriaForProtisthan(pId);
 
-    expect(criteria, hasLength(5));
+    expect(criteria, hasLength(6));
     expect(criteria[0].isSpecial, isTrue);
     expect(criteria[1].isSpecial, isTrue);
     expect(criteria[2].isSpecial, isTrue);
-    expect(criteria[3].name, 'দোকান ভাড়া');
-    expect(criteria[4].name, 'টোল');
+    expect(criteria[3].isSpecial, isTrue);
+    expect(criteria[4].name, 'দোকান ভাড়া');
+    expect(criteria[5].name, 'টোল');
   });
 
-  test('deleteCriteria throws for a special criteria (লক্ষ্যমাত্রা/খরচ/জমা cannot be deleted)', () async {
+  test('deleteCriteria throws for a special criteria (ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা cannot be deleted)', () async {
     final pId = await addProtisthan('ডিলিট প্রোটেকশন টেস্ট');
     final criteria = await db.getCriteriaForProtisthan(pId);
     final specialCriteria = criteria.firstWhere((c) => c.isSpecial);
@@ -273,7 +277,7 @@ void main() {
     expect(() => db.deleteCriteria(specialCriteria.id!), throwsA(isA<StateError>()));
 
     // Untouched — still there after the failed delete attempt.
-    expect(await db.getCriteriaForProtisthan(pId), hasLength(3));
+    expect(await db.getCriteriaForProtisthan(pId), hasLength(4));
   });
 
   test('ward target amount round-trips and getProtisthanTargetTotal sums all wards', () async {
@@ -307,9 +311,10 @@ void main() {
     expect(targetTotal, 75000);
   });
 
-  test('লক্ষ্যমাত্রা special criteria is never backed by an Entry — its value always comes from '
-      'ward.targetAmount, and it is excluded from row/grand totals but not its own column total', () async {
-    final pId = await addProtisthan('লক্ষ্যমাত্রা কলাম টেস্ট');
+  test('ধার্যকৃত নিসাব ও বাস্তব জমা are never backed by an Entry — নিসাব always comes from '
+      'ward.targetAmount, বাস্তব জমা is always আয়−ব্যয়, and both feed row/grand/column totals '
+      'per the আয় exclusion rule', () async {
+    final pId = await addProtisthan('নিসাব কলাম টেস্ট');
     final w1 = await db.insertWard(
       Ward(
         uuid: 'w-col-1-$pId',
@@ -329,39 +334,54 @@ void main() {
       ),
     );
     final criteria = await db.getCriteriaForProtisthan(pId);
-    final target = criteria.firstWhere((c) => c.isFixedTarget);
-    final expense = criteria.firstWhere((c) => c.specialOrder == 2);
-    final deposit = criteria.firstWhere((c) => c.specialOrder == 3);
+    final nisab = criteria.firstWhere((c) => c.isFixedTarget);
+    final income = criteria.firstWhere((c) => c.specialOrder == 2);
+    final expense = criteria.firstWhere((c) => c.specialOrder == 3);
+    final deposit = criteria.firstWhere((c) => c.isComputedDeposit);
 
-    // Deliberately chosen so খরচ + জমা != লক্ষ্যমাত্রা for either ward — if
-    // the target column ever leaked into the row/grand total, these
-    // numbers would expose it.
-    await db.saveEntry(wardId: w1, criteriaId: expense.id!, month: 9, year: 2026, amount: 4000, uuidFactory: _uuid.v4());
-    await db.saveEntry(wardId: w1, criteriaId: deposit.id!, month: 9, year: 2026, amount: 9000, uuidFactory: _uuid.v4());
-    await db.saveEntry(wardId: w2, criteriaId: expense.id!, month: 9, year: 2026, amount: 3000, uuidFactory: _uuid.v4());
-    await db.saveEntry(wardId: w2, criteriaId: deposit.id!, month: 9, year: 2026, amount: 5000, uuidFactory: _uuid.v4());
+    // Deliberately chosen so আয় != নিসাবের সাথে — if আয় ever leaked into
+    // the row/grand total (instead of just ব্যয়+বাস্তব জমা), these numbers
+    // would expose it.
+    await db.saveEntry(wardId: w1, criteriaId: income.id!, month: 9, year: 2026, amount: 8000, uuidFactory: _uuid.v4());
+    await db.saveEntry(wardId: w1, criteriaId: expense.id!, month: 9, year: 2026, amount: 2000, uuidFactory: _uuid.v4());
+    await db.saveEntry(wardId: w2, criteriaId: income.id!, month: 9, year: 2026, amount: 4000, uuidFactory: _uuid.v4());
+    await db.saveEntry(wardId: w2, criteriaId: expense.id!, month: 9, year: 2026, amount: 1000, uuidFactory: _uuid.v4());
 
-    // No Entry was ever saved for the target criteria; its breakdown value
-    // is always the ward's fixed target amount.
+    // No Entry was ever saved for নিসাব/বাস্তব জমা; their breakdown values
+    // are always the ward's fixed target and আয়−ব্যয় respectively.
     final w1Breakdown = await db.getWardCriteriaBreakdown(w1, pId, 9, 2026);
-    expect(w1Breakdown.firstWhere((e) => e.key.id == target.id).value, 20000);
+    expect(w1Breakdown.firstWhere((e) => e.key.id == nisab.id).value, 20000);
+    expect(w1Breakdown.firstWhere((e) => e.key.id == deposit.id).value, 6000); // 8000 - 2000
     final w2Breakdown = await db.getWardCriteriaBreakdown(w2, pId, 9, 2026);
-    expect(w2Breakdown.firstWhere((e) => e.key.id == target.id).value, 15000);
+    expect(w2Breakdown.firstWhere((e) => e.key.id == nisab.id).value, 15000);
+    expect(w2Breakdown.firstWhere((e) => e.key.id == deposit.id).value, 3000); // 4000 - 1000
 
-    // Protisthan-level breakdown shows the sum of both wards' targets.
+    // Protisthan-level breakdown shows the sum of both wards' targets, and
+    // this Protisthan's total আয় minus total ব্যয়.
     final protisthanBreakdown = await db.getProtisthanCriteriaBreakdown(pId, 9, 2026);
-    expect(protisthanBreakdown.firstWhere((e) => e.key.id == target.id).value, 35000);
+    expect(protisthanBreakdown.firstWhere((e) => e.key.id == nisab.id).value, 35000);
+    expect(protisthanBreakdown.firstWhere((e) => e.key.id == deposit.id).value, 9000); // 12000 - 3000
+    expect(await db.getProtisthanActualDepositTotal(pId, 9, 2026), 9000);
+    expect(await db.getWardExpenseTotal(pId, 9, 2026), 3000);
 
-    // Matrix: target shows up per-ward and as a column total, but is
-    // excluded from every row total and the grand total (it's a reference
-    // figure, not money actually collected).
+    // Matrix: নিসাব ও আয় excluded from every row total and the grand
+    // total (নিসাব is a reference figure, আয়'s contribution flows through
+    // via ব্যয়+বাস্তব জমা instead), but both still show their own column
+    // total.
     final matrix = await db.getMatrixReport(pId, 9, 2026);
-    expect(matrix.amountFor(w1, target.id!), 20000);
-    expect(matrix.amountFor(w2, target.id!), 15000);
-    expect(matrix.colTotals[target.id!], 35000);
-    expect(matrix.rowTotals[w1], 13000); // খরচ ৪০০০ + জমা ৯০০০, not ২০০০০
-    expect(matrix.rowTotals[w2], 8000); // খরচ ৩০০০ + জমা ৫০০০, not ১৫০০০
-    expect(matrix.grandTotal, 21000);
+    expect(matrix.amountFor(w1, nisab.id!), 20000);
+    expect(matrix.amountFor(w1, deposit.id!), 6000);
+    expect(matrix.colTotals[nisab.id!], 35000);
+    expect(matrix.colTotals[income.id!], 12000);
+    expect(matrix.rowTotals[w1], 8000); // ব্যয় ২০০০ + বাস্তব জমা ৬০০০, not আয় ৮০০০ বা নিসাব ২০০০০
+    expect(matrix.rowTotals[w2], 4000); // ব্যয় ১০০০ + বাস্তব জমা ৩০০০
+    expect(matrix.grandTotal, 12000);
+
+    // getWardTotal/getProtisthanTotal agree with the matrix's row/grand
+    // totals (this is exactly what tripped up the earlier design).
+    expect(await db.getWardTotal(w1, 9, 2026), 8000);
+    expect(await db.getWardTotal(w2, 9, 2026), 4000);
+    expect(await db.getProtisthanTotal(pId, 9, 2026), 12000);
   });
 
   test('saveRemittance / getRemittance round-trips and overwrites on re-entry, mirroring saveEntry (FR-4.5)', () async {
