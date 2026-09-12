@@ -15,6 +15,7 @@ import 'entry_form_screen.dart';
 import 'matrix_report_screen.dart';
 import 'protisthan_summary_screen.dart';
 import 'remittance_screen.dart';
+import 'thana_income_screen.dart';
 import 'trend_screen.dart';
 import 'ward_management_screen.dart';
 
@@ -54,7 +55,7 @@ class _ProtisthanDetailScreenState extends State<ProtisthanDetailScreen>
           controller: _tabController,
           tabs: const [
             Tab(text: 'ওয়ার্ড সমূহ'),
-            Tab(text: 'ক্রাইটেরিয়া'),
+            Tab(text: 'খাত'),
             Tab(text: 'রিপোর্ট'),
           ],
         ),
@@ -246,19 +247,19 @@ class _CriteriaTabState extends State<_CriteriaTab> {
             const Icon(Icons.category_outlined, size: 56),
             const SizedBox(height: 12),
             Text(
-              '${BanglaMonths.toBanglaDigits(_count)}টি ক্রাইটেরিয়া নির্ধারিত আছে',
+              '${BanglaMonths.toBanglaDigits(_count)}টি খাত নির্ধারিত আছে',
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              'এই প্রতিষ্ঠানের সকল ওয়ার্ডের জন্য একই ক্রাইটেরিয়া তালিকা ব্যবহৃত হয়।',
+              'এই থানার সকল ওয়ার্ডের জন্য একই খাত তালিকা ব্যবহৃত হয়।',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
               icon: const Icon(Icons.edit),
-              label: const Text('ক্রাইটেরিয়া ম্যানেজ করুন'),
+              label: const Text('খাত ম্যানেজ করুন'),
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(
                     builder: (_) => CriteriaManagementScreen(protisthan: widget.protisthan),
@@ -278,13 +279,44 @@ class _SummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
     return ListView(
       padding: safeBodyPadding(context),
       children: [
         _SummaryCard(
+          icon: Icons.point_of_sale_outlined,
+          title: 'থানার আয়',
+          subtitle: 'থানার নিজস্ব কালেকশন, খাত অনুযায়ী',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => ThanaIncomeScreen(
+                protisthan: protisthan,
+                initialMonth: now.month,
+                initialYear: now.year,
+              ),
+            ),
+          ),
+        ),
+        _SummaryCard(
+          icon: Icons.account_balance_outlined,
+          title: 'থানার বাস্তব জমা খরচ',
+          subtitle: 'সব ওয়ার্ডের বাস্তব জমা ও থানার ব্যয়ের হিসাব',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => RemittanceScreen(protisthan: protisthan)),
+          ),
+        ),
+        _SummaryCard(
+          icon: Icons.grid_on,
+          title: 'ম্যাট্রিক্স রিপোর্ট',
+          subtitle: 'ওয়ার্ড × খাত টেবিল — PDF/Excel এক্সপোর্ট করুন',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => MatrixReportScreen(protisthan: protisthan)),
+          ),
+        ),
+        _SummaryCard(
           icon: Icons.summarize_outlined,
-          title: 'প্রতিষ্ঠান মাসিক সামারি',
-          subtitle: 'মোট কালেকশন, ক্রাইটেরিয়া ও ওয়ার্ড অনুযায়ী বিভাজন',
+          title: 'থানার মাসিক কালেকশন এক নজরে',
+          subtitle: 'মোট কালেকশন, খাত ও ওয়ার্ড অনুযায়ী বিভাজন',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => ProtisthanSummaryScreen(protisthan: protisthan)),
           ),
@@ -295,22 +327,6 @@ class _SummaryTab extends StatelessWidget {
           subtitle: 'একাধিক মাসের কালেকশন গ্রাফ আকারে তুলনা করুন',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => TrendScreen(protisthan: protisthan)),
-          ),
-        ),
-        _SummaryCard(
-          icon: Icons.grid_on,
-          title: 'ম্যাট্রিক্স রিপোর্ট',
-          subtitle: 'ওয়ার্ড × ক্রাইটেরিয়া টেবিল — PDF/Excel এক্সপোর্ট করুন',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => MatrixReportScreen(protisthan: protisthan)),
-          ),
-        ),
-        _SummaryCard(
-          icon: Icons.account_balance_outlined,
-          title: 'প্রতিষ্ঠানের বাস্তব জমা খরচ',
-          subtitle: 'সব ওয়ার্ডের বাস্তব জমা ও প্রতিষ্ঠানের ব্যয়ের হিসাব',
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute(builder: (_) => RemittanceScreen(protisthan: protisthan)),
           ),
         ),
       ],

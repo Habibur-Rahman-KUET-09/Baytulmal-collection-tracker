@@ -34,7 +34,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'baytulmal_collection_tracker.db');
     return openDatabase(
       path,
-      version: 4,
+      version: 5,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -73,6 +73,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         created_at TEXT NOT NULL,
         target_amount REAL NOT NULL DEFAULT 0,
+        is_thana_ward INTEGER NOT NULL DEFAULT 0,
         FOREIGN KEY (protisthan_id) REFERENCES protisthan (id) ON DELETE CASCADE
       )
     ''');
@@ -132,6 +133,9 @@ class DatabaseHelper {
   /// ম্যানেজমেন্ট এ জমা (৩), replacing আদায় (২)/বকেয়া (৩).
   /// v3 -> v4: special criteria became ধার্যকৃত নিসাব (১)/আয় (২)/ব্যয় (৩)
   /// + a new বাস্তব জমা (৪, computed = আয়−ব্যয়, no Entry).
+  /// v4 -> v5: adds the hidden virtual "থানা" ward (one per Protisthan) used
+  /// to track থানার আয় — its own direct normal-খাত collections — via the
+  /// same ward/entry machinery (see [Ward.isThanaWard]/[ensureThanaWard]).
   Future<void> _upgradeSchema(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE criteria ADD COLUMN special_order INTEGER');
@@ -143,6 +147,10 @@ class DatabaseHelper {
     }
     if (oldVersion < 4) {
       await _migrateToNisabIncomeExpenseDeposit(db);
+    }
+    if (oldVersion < 5) {
+      await db.execute('ALTER TABLE ward ADD COLUMN is_thana_ward INTEGER NOT NULL DEFAULT 0');
+      await _seedThanaWardForAllProtisthan(db);
     }
   }
 
@@ -254,18 +262,77 @@ class DatabaseHelper {
     await seed(_specialActualDepositOrder, 'বাস্তব জমা');
   }
 
+  /// Ensures every existing Protisthan has its hidden থানা ward (new
+  /// Protisthan get this at creation time instead — see [ensureThanaWard]).
+  Future<void> _seedThanaWardForAllProtisthan(Database db) async {
+    final protisthanRows = await db.query('protisthan', columns: ['id']);
+    for (final row in protisthanRows) {
+      await ensureThanaWard(row['id'] as int, db: db);
+    }
+  }
+
+  /// Creates this Protisthan's hidden থানা ward if it doesn't already
+  /// exist. Safe to call repeatedly (e.g. right after creating a
+  /// Protisthan, and defensively during the v4->v5 migration).
+  Future<void> ensureThanaWard(int protisthanId, {Database? db}) async {
+    final database = db ?? await this.database;
+    final existing = await database.query(
+      'ward',
+      where: 'protisthan_id = ? AND is_thana_ward = 1',
+      whereArgs: [protisthanId],
+    );
+    if (existing.isNotEmpty) return;
+    await database.insert('ward', {
+      'uuid': _uuid.v4(),
+      'protisthan_id': protisthanId,
+      'name': 'থানা',
+      'created_at': DateTime.now().toIso8601String(),
+      'target_amount': 0,
+      'is_thana_ward': 1,
+    });
+  }
+
+  /// The hidden থানা ward for this Protisthan — always exists (seeded at
+  /// Protisthan creation / migration), so this should never return null in
+  /// practice.
+  Future<Ward?> getThanaWard(int protisthanId) async {
+    final db = await database;
+    final rows = await db.query(
+      'ward',
+      where: 'protisthan_id = ? AND is_thana_ward = 1',
+      whereArgs: [protisthanId],
+    );
+    if (rows.isEmpty) return null;
+    return Ward.fromMap(rows.first);
+  }
+
+  /// থানার আয়: this Protisthan's থানা ward's own direct collections against
+  /// normal (non-special) খাত for a month — entered on the থানার আয় screen.
+  Future<double> getThanaIncomeTotal(int protisthanId, int month, int year) async {
+    final thanaWard = await getThanaWard(protisthanId);
+    if (thanaWard == null) return 0;
+    final criteriaList = await getCriteriaForProtisthan(protisthanId);
+    final entries = await getEntriesForWardMonth(thanaWard.id!, month, year);
+    double total = 0;
+    for (final c in criteriaList) {
+      if (!c.isSpecial) total += entries[c.id] ?? 0.0;
+    }
+    return total;
+  }
+
   // ---------------------------------------------------------------------
   // Protisthan CRUD
   // ---------------------------------------------------------------------
 
   /// Also seeds this Protisthan's ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা
-  /// special criteria (section 4/5 of the special-criteria feature) so
-  /// every Protisthan always has them, without the caller needing to know
-  /// about that detail.
+  /// special criteria (section 4/5 of the special-criteria feature) and its
+  /// hidden থানা ward (see [ensureThanaWard]) so every Protisthan always has
+  /// them, without the caller needing to know about that detail.
   Future<int> insertProtisthan(Protisthan p) async {
     final db = await database;
     final id = await db.insert('protisthan', p.toMap()..remove('id'));
     await ensureSpecialCriteria(id, db: db);
+    await ensureThanaWard(id, db: db);
     return id;
   }
 
@@ -353,11 +420,13 @@ class DatabaseHelper {
     return db.delete('ward', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Real (non-থানা) wards only — the hidden virtual থানা ward (see
+  /// [Ward.isThanaWard]) never appears in ward lists/counts/pickers.
   Future<List<Ward>> getWardsForProtisthan(int protisthanId) async {
     final db = await database;
     final rows = await db.query(
       'ward',
-      where: 'protisthan_id = ?',
+      where: 'protisthan_id = ? AND is_thana_ward = 0',
       whereArgs: [protisthanId],
       orderBy: 'id ASC',
     );
@@ -371,11 +440,12 @@ class DatabaseHelper {
     return Ward.fromMap(rows.first);
   }
 
-  /// Counts used on the home screen card subtitle ("৫টি ওয়ার্ড · ৪টি ক্রাইটেরিয়া").
+  /// Counts used on the home screen card subtitle ("৫টি ওয়ার্ড · ৪টি খাত") —
+  /// excludes the hidden virtual থানা ward.
   Future<Map<int, int>> getWardCountsByProtisthan() async {
     final db = await database;
     final rows = await db.rawQuery(
-      'SELECT protisthan_id, COUNT(*) AS cnt FROM ward GROUP BY protisthan_id',
+      'SELECT protisthan_id, COUNT(*) AS cnt FROM ward WHERE is_thana_ward = 0 GROUP BY protisthan_id',
     );
     return {for (final r in rows) r['protisthan_id'] as int: r['cnt'] as int};
   }
@@ -520,12 +590,14 @@ class DatabaseHelper {
     });
   }
 
-  /// Breakdown by Criteria across all wards of a Protisthan for a month
-  /// (FR-5.3, FR-6.1). ধার্যকৃত নিসাব (১) isn't backed by any Entry — its
-  /// value is always [getProtisthanTargetTotal], the sum of all this
-  /// Protisthan's wards' fixed target amounts. বাস্তব জমা (৪) isn't either
-  /// — its value is always this Protisthan's total আয়(২) minus total
-  /// ব্যয়(৩) for the month.
+  /// Breakdown by Criteria across all REAL wards of a Protisthan for a
+  /// month (FR-5.3, FR-6.1) — excludes the hidden virtual থানা ward (see
+  /// [Ward.isThanaWard]/[getThanaIncomeTotal]) so this stays "সকল ওয়ার্ডের"
+  /// only, consistent with [getWardsForProtisthan]. ধার্যকৃত নিসাব (১) isn't
+  /// backed by any Entry — its value is always [getProtisthanTargetTotal],
+  /// the sum of all this Protisthan's wards' fixed target amounts. বাস্তব
+  /// জমা (৪) isn't either — its value is always this Protisthan's total
+  /// আয়(২) minus total ব্যয়(৩) for the month.
   Future<List<MapEntry<Criteria, double>>> getProtisthanCriteriaBreakdown(
     int protisthanId,
     int month,
@@ -538,7 +610,7 @@ class DatabaseHelper {
       SELECT e.criteria_id AS criteria_id, COALESCE(SUM(e.amount), 0) AS total
       FROM entry e
       INNER JOIN ward w ON w.id = e.ward_id
-      WHERE w.protisthan_id = ? AND e.month = ? AND e.year = ?
+      WHERE w.protisthan_id = ? AND w.is_thana_ward = 0 AND e.month = ? AND e.year = ?
       GROUP BY e.criteria_id
       ''',
       [protisthanId, month, year],
@@ -610,9 +682,15 @@ class DatabaseHelper {
   /// collected, and ২'s contribution flows through via ৩+৪ instead — see
   /// [Criteria.specialOrder]), though both still show their own column
   /// total.
+  ///
+  /// Also computes a separate থানা row (this Protisthan's hidden থানা
+  /// ward's own normal-খাত entries — থানার আয় — with all special-criteria
+  /// columns left blank, since থানা has no নিসাব/আয়/ব্যয়/বাস্তব জমা of its
+  /// own) plus থানাসহ সর্বমোট combined totals (ward totals + থানা row).
   Future<MatrixReportData> getMatrixReport(int protisthanId, int month, int year) async {
     final wards = await getWardsForProtisthan(protisthanId);
     final criteriaList = await getCriteriaForProtisthan(protisthanId);
+    final thanaWard = await getThanaWard(protisthanId);
     final db = await database;
     final rows = await db.rawQuery(
       '''
@@ -667,6 +745,22 @@ class DatabaseHelper {
       grandTotal += rowSum;
     }
 
+    final thanaRow = <int, double>{};
+    double thanaRowTotal = 0;
+    if (thanaWard != null) {
+      for (final c in criteriaList) {
+        if (c.isSpecial) continue; // থানার নিজস্ব নিসাব/আয়/ব্যয়/বাস্তব জমা নেই
+        final v = cells[thanaWard.id]?[c.id] ?? 0.0;
+        thanaRow[c.id!] = v;
+        thanaRowTotal += v;
+      }
+    }
+
+    final combinedColTotals = <int, double>{
+      for (final c in criteriaList) c.id!: (colTotals[c.id] ?? 0) + (thanaRow[c.id] ?? 0),
+    };
+    final combinedGrandTotal = grandTotal + thanaRowTotal;
+
     return MatrixReportData(
       wards: wards,
       criteriaList: criteriaList,
@@ -674,6 +768,10 @@ class DatabaseHelper {
       rowTotals: rowTotals,
       colTotals: colTotals,
       grandTotal: grandTotal,
+      thanaRow: thanaRow,
+      thanaRowTotal: thanaRowTotal,
+      combinedColTotals: combinedColTotals,
+      combinedGrandTotal: combinedGrandTotal,
     );
   }
 
@@ -694,7 +792,7 @@ class DatabaseHelper {
     final results = <TrendPoint>[];
 
     for (final m in months) {
-      String where = 'w.protisthan_id = ? AND e.month = ? AND e.year = ?';
+      String where = 'w.protisthan_id = ? AND w.is_thana_ward = 0 AND e.month = ? AND e.year = ?';
       final args = <Object?>[protisthanId, m.month, m.year];
       if (criteriaId != null) {
         where += ' AND e.criteria_id = ?';
@@ -860,8 +958,17 @@ class MatrixReportData {
   final List<Criteria> criteriaList;
   final Map<int, Map<int, double>> cells; // wardId -> criteriaId -> amount
   final Map<int, double> rowTotals; // wardId -> total
-  final Map<int, double> colTotals; // criteriaId -> total
-  final double grandTotal;
+  final Map<int, double> colTotals; // criteriaId -> total (ward-only)
+  final double grandTotal; // ward-only
+
+  /// থানা row: criteriaId -> থানার নিজস্ব normal-খাত collection (থানার আয়)।
+  /// Special-criteria ids are absent (blank column for থানা).
+  final Map<int, double> thanaRow;
+  final double thanaRowTotal;
+
+  /// criteriaId -> ward total + থানা row (থানাসহ সর্বমোট, per column).
+  final Map<int, double> combinedColTotals;
+  final double combinedGrandTotal;
 
   MatrixReportData({
     required this.wards,
@@ -870,7 +977,13 @@ class MatrixReportData {
     required this.rowTotals,
     required this.colTotals,
     required this.grandTotal,
+    required this.thanaRow,
+    required this.thanaRowTotal,
+    required this.combinedColTotals,
+    required this.combinedGrandTotal,
   });
 
   double amountFor(int wardId, int criteriaId) => cells[wardId]?[criteriaId] ?? 0.0;
+
+  double thanaAmountFor(int criteriaId) => thanaRow[criteriaId] ?? 0.0;
 }

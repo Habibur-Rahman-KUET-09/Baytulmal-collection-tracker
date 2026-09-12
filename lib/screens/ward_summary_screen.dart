@@ -101,7 +101,7 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
                   _TargetMatchCard(target: widget.ward.targetAmount, breakdown: _breakdown),
                 ],
                 const SizedBox(height: 20),
-                const Text('ক্রাইটেরিয়া অনুযায়ী বিভাজন', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('খাত অনুযায়ী বিভাজন', style: TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ..._breakdown.map(
                   (e) => Card(

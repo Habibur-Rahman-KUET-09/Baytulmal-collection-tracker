@@ -9,7 +9,7 @@ import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 
-/// Screen 4: ক্রাইটেরিয়া ম্যানেজমেন্ট (CRUD list) — FR-2.1 .. FR-2.5.
+/// Screen 4: খাত ম্যানেজমেন্ট (CRUD list) — FR-2.1 .. FR-2.5.
 class CriteriaManagementScreen extends StatefulWidget {
   final Protisthan protisthan;
   const CriteriaManagementScreen({super.key, required this.protisthan});
@@ -42,8 +42,8 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   Future<void> _add() async {
     final name = await showNameInputDialog(
       context,
-      title: 'নতুন ক্রাইটেরিয়া যোগ করুন',
-      label: 'ক্রাইটেরিয়ার নাম',
+      title: 'নতুন খাত যোগ করুন',
+      label: 'খাতের নাম',
       hintText: 'যেমনঃ দোকান ভাড়া',
     );
     if (name != null && name.isNotEmpty && mounted) {
@@ -55,8 +55,8 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   Future<void> _rename(Criteria c) async {
     final name = await showNameInputDialog(
       context,
-      title: 'ক্রাইটেরিয়ার নাম সম্পাদনা',
-      label: 'ক্রাইটেরিয়ার নাম',
+      title: 'খাতের নাম সম্পাদনা',
+      label: 'খাতের নাম',
       initialValue: c.name,
     );
     if (name != null && name.isNotEmpty && mounted) {
@@ -68,8 +68,8 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   Future<void> _delete(Criteria c) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'ক্রাইটেরিয়া মুছে ফেলুন?',
-      message: '"${c.name}" মুছে ফেললে সকল ওয়ার্ডের এই ক্রাইটেরিয়া সংক্রান্ত এন্ট্রি ডেটাও মুছে যাবে।',
+      title: 'খাত মুছে ফেলুন?',
+      message: '"${c.name}" মুছে ফেললে সকল ওয়ার্ডের এই খাত সংক্রান্ত এন্ট্রি ডেটাও মুছে যাবে।',
     );
     if (confirmed && mounted) {
       await context.read<AppDataProvider>().deleteCriteria(c.id!);
@@ -80,13 +80,13 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('ক্রাইটেরিয়া (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text('খাত (${widget.protisthan.name})')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _criteria.isEmpty
               ? const EmptyState(
                   icon: Icons.category_outlined,
-                  message: 'কোনো ক্রাইটেরিয়া যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ক্রাইটেরিয়া যোগ করুন।',
+                  message: 'কোনো খাত যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি খাত যোগ করুন।',
                 )
               : ListView.builder(
                   padding: safeBodyPadding(context, amount: 12),
@@ -99,7 +99,7 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                         title: Text(c.name),
                         subtitle: c.isSpecial
                             ? const Text(
-                                'বিশেষ ক্রাইটেরিয়া — ধার্যকৃত নিসাবের সাথে সম্পর্কিত',
+                                'বিশেষ খাত — ধার্যকৃত নিসাবের সাথে সম্পর্কিত',
                                 style: TextStyle(fontSize: 11.5),
                               )
                             : null,

@@ -20,8 +20,8 @@ class ExcelExportService {
     required double protisthanExpenseAmount,
   }) async {
     final excel = Excel.createExcel();
-    const sheetName = 'Report';
-    final sheet = excel[sheetName]; // auto-creates the "Report" sheet
+    const sheetName = 'রিপোর্ট';
+    final sheet = excel[sheetName]; // auto-creates the "রিপোর্ট" sheet
     // Drop the library's auto-created "Sheet1" (and any other stray sheet)
     // so the exported file only contains our report.
     for (final existing in excel.tables.keys.toList()) {
@@ -56,38 +56,55 @@ class ExcelExportService {
       DoubleCellValue(data.grandTotal),
     ]);
 
-    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "প্রতিষ্ঠানের বাস্তব জমা", always
-    // computed — no separate manually-typed figure anymore), matching the
-    // PDF report's box.
+    // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) — special-criteria কলাম
+    // খালি থাকে, যেহেতু থানার নিজস্ব নিসাব/আয়/ব্যয়/বাস্তব জমা নেই।
+    sheet.appendRow([
+      TextCellValue('থানা'),
+      ...data.criteriaList.map(
+        (c) => c.isSpecial ? TextCellValue('') : DoubleCellValue(data.thanaAmountFor(c.id!)),
+      ),
+      DoubleCellValue(data.thanaRowTotal),
+    ]);
+
+    sheet.appendRow([
+      TextCellValue('থানাসহ সর্বমোট'),
+      ...data.criteriaList.map((c) => DoubleCellValue(data.combinedColTotals[c.id!] ?? 0)),
+      DoubleCellValue(data.combinedGrandTotal),
+    ]);
+
+    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "থানার বাস্তব জমা", always computed
+    // — no separate manually-typed figure anymore), matching the PDF
+    // report's box.
     final protisthanActualDeposit = actualDepositTotal - protisthanExpenseAmount;
 
     sheet.appendRow([TextCellValue('')]);
     sheet.appendRow([TextCellValue('উচ্চ কর্তৃপক্ষে জমার হিসাব')]);
-    sheet.appendRow([TextCellValue('১. বাস্তব জমা'), DoubleCellValue(actualDepositTotal)]);
-    sheet.appendRow([TextCellValue('২. $protisthanName ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
+    sheet.appendRow([TextCellValue('১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা'), DoubleCellValue(actualDepositTotal)]);
+    sheet.appendRow([TextCellValue('২. থানার ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
     sheet.appendRow([
-      TextCellValue('প্রতিষ্ঠানের বাস্তব জমা (১ - ২)'),
+      TextCellValue('থানার বাস্তব জমা (১ - ২)'),
       DoubleCellValue(protisthanActualDeposit),
     ]);
 
-    // Second box: per-criteria totals for the Protisthan, but with the
-    // ৪টা special criteria collapsed into একটা "প্রতিষ্ঠানের বাস্তব জমা"
-    // row (= উচ্চ কর্তৃপক্ষে জমার হিসাব বক্সের ফলাফল) + separate ওয়ার্ডের
-    // ব্যয়ের যোগফল and {protisthanName} ব্যয় rows. This section's own
-    // total always equals the matrix table's grand total (সর্বমোট) above.
+    // Second box: সকল খাতের হিসাব (ওয়ার্ড ও থানা মিলিয়ে) — ৪টা special
+    // criteria collapsed into একটা "থানার বাস্তব জমা / নিসাব" row (= উচ্চ
+    // কর্তৃপক্ষে জমার হিসাব বক্সের ফলাফল) + আলাদা "থানার ব্যয়" ও "ওয়ার্ডের
+    // মোট ব্যয়" রো, তারপর সব normal খাত — combinedColTotals থেকে (ওয়ার্ড +
+    // থানা row একসাথে)। এই বক্সের নিজস্ব total সবসময় ম্যাট্রিক্স টেবিলের
+    // "থানাসহ সর্বমোট" ঘরের সমান।
     final normalCriteria = data.criteriaList.where((c) => !c.isSpecial).toList();
     final normalCriteriaTotal =
-        normalCriteria.fold<double>(0, (sum, c) => sum + (data.colTotals[c.id!] ?? 0));
+        normalCriteria.fold<double>(0, (sum, c) => sum + (data.combinedColTotals[c.id!] ?? 0));
     final totalBoxTotal =
         protisthanActualDeposit + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
 
     sheet.appendRow([TextCellValue('')]);
-    sheet.appendRow([TextCellValue('প্রতিষ্ঠান টোটাল হিসাব')]);
-    sheet.appendRow([TextCellValue('প্রতিষ্ঠানের বাস্তব জমা'), DoubleCellValue(protisthanActualDeposit)]);
-    sheet.appendRow([TextCellValue('ওয়ার্ডের ব্যয়ের যোগফল'), DoubleCellValue(wardExpenseTotal)]);
-    sheet.appendRow([TextCellValue('$protisthanName ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
+    sheet.appendRow([TextCellValue('সকল খাতের হিসাব (ওয়ার্ড ও থানা মিলিয়ে)')]);
+    sheet.appendRow([TextCellValue('থানার বাস্তব জমা / নিসাব'), DoubleCellValue(protisthanActualDeposit)]);
+    sheet.appendRow([TextCellValue('ওয়ার্ডের মোট ব্যয়'), DoubleCellValue(wardExpenseTotal)]);
+    sheet.appendRow([TextCellValue('থানার ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
     for (final c in normalCriteria) {
-      sheet.appendRow([TextCellValue(c.name), DoubleCellValue(data.colTotals[c.id!] ?? 0)]);
+      sheet.appendRow([TextCellValue(c.name), DoubleCellValue(data.combinedColTotals[c.id!] ?? 0)]);
     }
     sheet.appendRow([TextCellValue('সর্বমোট'), DoubleCellValue(totalBoxTotal)]);
 

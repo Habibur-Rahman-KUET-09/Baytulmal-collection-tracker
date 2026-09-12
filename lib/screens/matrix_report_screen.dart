@@ -161,7 +161,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'রিপোর্ট তৈরি করতে অন্তত একটি ওয়ার্ড এবং একটি ক্রাইটেরিয়া প্রয়োজন।',
+                    'রিপোর্ট তৈরি করতে অন্তত একটি ওয়ার্ড এবং একটি খাত প্রয়োজন।',
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -208,6 +208,36 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                           ),
                           DataCell(Text(
                             CurrencyFormatter.format(data.grandTotal, withSymbol: false),
+                            style: headerStyle,
+                          )),
+                        ],
+                      ),
+                      DataRow(cells: [
+                        const DataCell(Text('থানা')),
+                        ...data.criteriaList.map(
+                          (c) => DataCell(Text(
+                            c.isSpecial ? '' : CurrencyFormatter.cellDisplay(data.thanaAmountFor(c.id!)),
+                          )),
+                        ),
+                        DataCell(Text(
+                          CurrencyFormatter.format(data.thanaRowTotal, withSymbol: false),
+                          style: headerStyle,
+                        )),
+                      ]),
+                      DataRow(
+                        color: WidgetStateProperty.all(
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                        ),
+                        cells: [
+                          DataCell(Text('থানাসহ সর্বমোট', style: headerStyle)),
+                          ...data.criteriaList.map(
+                            (c) => DataCell(Text(
+                              CurrencyFormatter.format(data.combinedColTotals[c.id!] ?? 0, withSymbol: false),
+                              style: headerStyle,
+                            )),
+                          ),
+                          DataCell(Text(
+                            CurrencyFormatter.format(data.combinedGrandTotal, withSymbol: false),
                             style: headerStyle,
                           )),
                         ],

@@ -414,4 +414,96 @@ void main() {
     expect(updated.expenseAmount, 6000);
     expect(updated.actualDepositAmount, 42000);
   });
+
+  test('every protisthan gets an auto-created, hidden থানা ward (invisible to ward lists/counts)', () async {
+    final pId = await addProtisthan('থানা ওয়ার্ড টেস্ট');
+    final realWardId = await addWard(pId, 'ওয়ার্ড ১');
+
+    final thanaWard = await db.getThanaWard(pId);
+    expect(thanaWard, isNotNull);
+    expect(thanaWard!.isThanaWard, isTrue);
+    expect(thanaWard.name, 'থানা');
+
+    final wards = await db.getWardsForProtisthan(pId);
+    expect(wards.map((w) => w.id), [realWardId]);
+    expect(wards.any((w) => w.isThanaWard), isFalse);
+
+    final counts = await db.getWardCountsByProtisthan();
+    expect(counts[pId], 1); // শুধু বাস্তব ওয়ার্ড গণনা হয়, থানা বাদে
+
+    // ensureThanaWard is idempotent — calling again doesn't create a duplicate.
+    await db.ensureThanaWard(pId);
+    final thanaWardAgain = await db.getThanaWard(pId);
+    expect(thanaWardAgain!.id, thanaWard.id);
+  });
+
+  test("থানার আয় (thana ward normal-খাত entries) stays separate from real wards' totals, "
+      'and combines correctly in the matrix report', () async {
+    final pId = await addProtisthan('থানার আয় টেস্ট');
+    final cId = await addCriteria(pId, 'দোকান ভাড়া');
+    final wId = await addWard(pId, 'ওয়ার্ড ১');
+    final thanaWard = await db.getThanaWard(pId);
+
+    await db.saveEntry(wardId: wId, criteriaId: cId, month: 9, year: 2026, amount: 5000, uuidFactory: _uuid.v4());
+    await db.saveEntry(
+      wardId: thanaWard!.id!,
+      criteriaId: cId,
+      month: 9,
+      year: 2026,
+      amount: 3000,
+      uuidFactory: _uuid.v4(),
+    );
+
+    // Ward-only totals (used app-wide) never include থানার আয়.
+    expect(await db.getWardTotal(wId, 9, 2026), 5000);
+    expect(await db.getProtisthanTotal(pId, 9, 2026), 5000);
+    final criteriaBreakdown = await db.getProtisthanCriteriaBreakdown(pId, 9, 2026);
+    expect(criteriaBreakdown.firstWhere((e) => e.key.id == cId).value, 5000);
+
+    // থানার আয় itself sums only the thana ward's entries.
+    expect(await db.getThanaIncomeTotal(pId, 9, 2026), 3000);
+
+    // Matrix: real wards unaffected, থানা row carries থানার আয় separately,
+    // থানাসহ সর্বমোট combines both.
+    final matrix = await db.getMatrixReport(pId, 9, 2026);
+    expect(matrix.wards.map((w) => w.id), [wId]);
+    expect(matrix.colTotals[cId], 5000);
+    expect(matrix.grandTotal, 5000);
+    expect(matrix.thanaAmountFor(cId), 3000);
+    expect(matrix.thanaRowTotal, 3000);
+    expect(matrix.combinedColTotals[cId], 8000);
+    expect(matrix.combinedGrandTotal, 8000);
+  });
+
+  test('থানা row has no নিসাব/আয়/ব্যয়/বাস্তব জমা of its own — special columns stay absent', () async {
+    final pId = await addProtisthan('থানা স্পেশাল টেস্ট');
+    final wId = await addWard(pId, 'ওয়ার্ড ১');
+    final criteria = await db.getCriteriaForProtisthan(pId);
+    final income = criteria.firstWhere((c) => c.specialOrder == 2);
+    final expense = criteria.firstWhere((c) => c.specialOrder == 3);
+    await db.saveEntry(
+      wardId: wId,
+      criteriaId: income.id!,
+      month: 9,
+      year: 2026,
+      amount: 8000,
+      uuidFactory: _uuid.v4(),
+    );
+    await db.saveEntry(
+      wardId: wId,
+      criteriaId: expense.id!,
+      month: 9,
+      year: 2026,
+      amount: 2000,
+      uuidFactory: _uuid.v4(),
+    );
+
+    final matrix = await db.getMatrixReport(pId, 9, 2026);
+    expect(matrix.thanaRow.containsKey(income.id), isFalse);
+    expect(matrix.thanaRow.containsKey(expense.id), isFalse);
+    expect(matrix.thanaRowTotal, 0);
+    // Special columns' combined total == ward-only colTotals (থানা adds nothing).
+    expect(matrix.combinedColTotals[income.id], matrix.colTotals[income.id]);
+    expect(matrix.combinedColTotals[expense.id], matrix.colTotals[expense.id]);
+  });
 }

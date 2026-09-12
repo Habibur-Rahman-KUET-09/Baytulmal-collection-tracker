@@ -47,6 +47,11 @@ void main() {
       rowTotals: {1: 13500, 2: 7000},
       colTotals: {1: 35000, 2: 12000, 3: 3000, 4: 9000, 5: 8500},
       grandTotal: 20500,
+      // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) — special columns বাদে।
+      thanaRow: {5: 1200},
+      thanaRowTotal: 1200,
+      combinedColTotals: {1: 35000, 2: 12000, 3: 3000, 4: 9000, 5: 9700},
+      combinedGrandTotal: 21700,
     );
 
     final path = '${Directory.systemTemp.path}/pdf_export_service_test.pdf';

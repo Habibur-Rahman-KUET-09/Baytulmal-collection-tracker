@@ -30,8 +30,8 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   Future<void> _addProtisthan(BuildContext context) async {
     final name = await showNameInputDialog(
       context,
-      title: 'নতুন প্রতিষ্ঠান যোগ করুন',
-      label: 'প্রতিষ্ঠানের নাম',
+      title: 'নতুন থানা যোগ করুন',
+      label: 'থানার নাম',
       hintText: 'যেমনঃ কারওয়ান বাজার',
     );
     if (name != null && name.isNotEmpty && context.mounted) {
@@ -42,8 +42,8 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   Future<void> _editProtisthan(BuildContext context, Protisthan p) async {
     final name = await showNameInputDialog(
       context,
-      title: 'প্রতিষ্ঠানের নাম সম্পাদনা',
-      label: 'প্রতিষ্ঠানের নাম',
+      title: 'থানার নাম সম্পাদনা',
+      label: 'থানার নাম',
       initialValue: p.name,
     );
     if (name != null && name.isNotEmpty && context.mounted) {
@@ -54,9 +54,9 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   Future<void> _deleteProtisthan(BuildContext context, Protisthan p) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'প্রতিষ্ঠান মুছে ফেলুন?',
+      title: 'থানা মুছে ফেলুন?',
       message:
-          '"${p.name}" মুছে ফেললে এর সকল ওয়ার্ড, ক্রাইটেরিয়া এবং এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে। এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
+          '"${p.name}" মুছে ফেললে এর সকল ওয়ার্ড, খাত এবং এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে। এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
     );
     if (confirmed && context.mounted) {
       await context.read<AppDataProvider>().deleteProtisthan(p.id!);
@@ -85,7 +85,7 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
           : provider.protisthanList.isEmpty
               ? const EmptyState(
                   icon: Icons.account_balance_outlined,
-                  message: 'কোনো প্রতিষ্ঠান যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি প্রতিষ্ঠান যোগ করুন।',
+                  message: 'কোনো থানা যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি থানা যোগ করুন।',
                 )
               : RefreshIndicator(
                   onRefresh: provider.refresh,
@@ -101,7 +101,7 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                         child: ListTile(
                           title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                            '${BanglaMonths.toBanglaDigits(wardCount)}টি ওয়ার্ড · ${BanglaMonths.toBanglaDigits(criteriaCount)}টি ক্রাইটেরিয়া',
+                            '${BanglaMonths.toBanglaDigits(wardCount)}টি ওয়ার্ড · ${BanglaMonths.toBanglaDigits(criteriaCount)}টি খাত',
                           ),
                           trailing: PopupMenuButton<String>(
                             onSelected: (value) {

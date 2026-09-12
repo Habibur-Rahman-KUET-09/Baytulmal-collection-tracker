@@ -7,11 +7,11 @@ import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
-/// প্রতিষ্ঠানের বাস্তব জমা খরচ — a separate, per-Protisthan/month page
-/// tracking how much of this Protisthan's collection was actually
-/// remitted upward: ১. বাস্তব জমা (auto, = sum of all wards' আয়−ব্যয়) −
-/// ২. {protisthan name} ব্যয় (manual) gives "প্রতিষ্ঠানের বাস্তব জমা", which
-/// is always computed, not typed.
+/// থানার বাস্তব জমা খরচ — a separate, per-Protisthan/month page tracking how
+/// much of this Protisthan's collection was actually remitted upward:
+/// ১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা (auto, = sum of all wards' আয়−ব্যয়) −
+/// ২. থানার ব্যয় (manual) gives "থানার বাস্তব জমা", which is always
+/// computed, not typed.
 class RemittanceScreen extends StatefulWidget {
   final Protisthan protisthan;
   const RemittanceScreen({super.key, required this.protisthan});
@@ -91,7 +91,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
     final protisthanActualDeposit = _actualDepositTotal - expense;
 
     return Scaffold(
-      appBar: AppBar(title: Text('প্রতিষ্ঠানের বাস্তব জমা খরচ (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text('থানার বাস্তব জমা খরচ (${widget.protisthan.name})')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -109,14 +109,17 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                   },
                 ),
                 const SizedBox(height: 20),
-                _StatRow(label: '১. বাস্তব জমা', value: CurrencyFormatter.format(_actualDepositTotal)),
+                _StatRow(
+                  label: '১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা',
+                  value: CurrencyFormatter.format(_actualDepositTotal),
+                ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _expenseCtrl,
-                  decoration: InputDecoration(
-                    labelText: '২. ${widget.protisthan.name} ব্যয় (৳)',
+                  decoration: const InputDecoration(
+                    labelText: '২. থানার ব্যয় (৳)',
                     helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে',
-                    border: const OutlineInputBorder(),
+                    border: OutlineInputBorder(),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
@@ -126,7 +129,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 const Divider(),
                 const SizedBox(height: 4),
                 _StatRow(
-                  label: 'প্রতিষ্ঠানের বাস্তব জমা (১ - ২)',
+                  label: 'থানার বাস্তব জমা (১ - ২)',
                   value: CurrencyFormatter.format(protisthanActualDeposit),
                   bold: true,
                 ),

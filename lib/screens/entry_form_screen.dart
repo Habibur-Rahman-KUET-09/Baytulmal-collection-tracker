@@ -271,12 +271,12 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  const Text('অন্যান্য ক্রাইটেরিয়া (সবগুলো ঐচ্ছিক)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('অন্যান্য খাত (সবগুলো ঐচ্ছিক)', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   if (normalCriteria.isEmpty)
                     const EmptyState(
                       icon: Icons.category_outlined,
-                      message: 'এই প্রতিষ্ঠানের জন্য অতিরিক্ত কোনো ক্রাইটেরিয়া নেই।',
+                      message: 'এই থানার জন্য অতিরিক্ত কোনো খাত নেই।',
                     )
                   else
                     ...normalCriteria.map(_criteriaField),

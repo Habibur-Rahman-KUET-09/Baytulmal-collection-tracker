@@ -8,7 +8,10 @@ import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
 
-/// Screen 7: প্রতিষ্ঠান মাসিক সামারি — FR-6.1, FR-5.4, FR-5.5.
+/// Screen 7: থানার মাসিক কালেকশন এক নজরে — FR-6.1, FR-5.4, FR-5.5.
+///
+/// তিনটি ধাপে যোগফল দেখায়: (ক) সকল ওয়ার্ডের মোট কালেকশন [ward-only, আগের
+/// মতোই], (খ) + থানার আয় = উপ-যোগফল, (গ) − থানার ব্যয় = চূড়ান্ত যোগফল।
 class ProtisthanSummaryScreen extends StatefulWidget {
   final Protisthan protisthan;
   const ProtisthanSummaryScreen({super.key, required this.protisthan});
@@ -23,11 +26,16 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
   late int _month;
   late int _year;
 
-  double _total = 0;
+  double _wardTotal = 0;
+  double _thanaIncome = 0;
+  double _thanaExpense = 0;
   double _targetTotal = 0;
   List<MapEntry<Criteria, double>> _criteriaBreakdown = [];
   List<MapEntry<Ward, double>> _wardBreakdown = [];
   bool _loading = true;
+
+  double get _subtotal => _wardTotal + _thanaIncome;
+  double get _finalTotal => _subtotal - _thanaExpense;
 
   @override
   void initState() {
@@ -39,14 +47,18 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final total = await db.getProtisthanTotal(widget.protisthan.id!, _month, _year);
+    final wardTotal = await db.getProtisthanTotal(widget.protisthan.id!, _month, _year);
+    final thanaIncome = await db.getThanaIncomeTotal(widget.protisthan.id!, _month, _year);
+    final remittance = await db.getRemittance(widget.protisthan.id!, _month, _year);
     final criteriaBreakdown =
         await db.getProtisthanCriteriaBreakdown(widget.protisthan.id!, _month, _year);
     final wardBreakdown = await db.getProtisthanWardBreakdown(widget.protisthan.id!, _month, _year);
     final targetTotal = await db.getProtisthanTargetTotal(widget.protisthan.id!);
     if (!mounted) return;
     setState(() {
-      _total = total;
+      _wardTotal = wardTotal;
+      _thanaIncome = thanaIncome;
+      _thanaExpense = remittance?.expenseAmount ?? 0;
       _criteriaBreakdown = criteriaBreakdown;
       _wardBreakdown = wardBreakdown;
       _targetTotal = targetTotal;
@@ -54,10 +66,30 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
     });
   }
 
+  Widget _statRow(String label, double value, {bool bold = false, bool divider = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      decoration: divider
+          ? const BoxDecoration(border: Border(top: BorderSide(color: Colors.black12)))
+          : null,
+      margin: divider ? const EdgeInsets.only(top: 6) : null,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal)),
+          Text(
+            CurrencyFormatter.format(value),
+            style: TextStyle(fontWeight: bold ? FontWeight.bold : FontWeight.normal),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('মাসিক সামারি')),
+      appBar: AppBar(title: const Text('থানার মাসিক কালেকশন এক নজরে')),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -81,11 +113,26 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                     child: Column(
                       children: [
                         Text(
-                          CurrencyFormatter.format(_total),
+                          CurrencyFormatter.format(_finalTotal),
                           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
                         const Text('মোট কালেকশন'),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Column(
+                      children: [
+                        _statRow('সকল ওয়ার্ডের মোট কালেকশন', _wardTotal),
+                        _statRow('+ থানার আয়', _thanaIncome),
+                        _statRow('উপ-যোগফল', _subtotal, bold: true, divider: true),
+                        _statRow('− থানার ব্যয়', _thanaExpense),
+                        _statRow('চূড়ান্ত মোট কালেকশন', _finalTotal, bold: true, divider: true),
                       ],
                     ),
                   ),
@@ -111,7 +158,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                const Text('ক্রাইটেরিয়া অনুযায়ী', style: TextStyle(fontWeight: FontWeight.bold)),
+                const Text('খাত অনুযায়ী', style: TextStyle(fontWeight: FontWeight.bold)),
                 const Divider(),
                 ..._criteriaBreakdown.map(
                   (e) => ListTile(

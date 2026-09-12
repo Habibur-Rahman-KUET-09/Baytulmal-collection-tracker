@@ -52,9 +52,9 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
         context,
         title: 'বিদ্যমান ডেটা প্রতিস্থাপন করা হবে',
         message: 'এই ব্যাকআপ ফাইলে '
-            '${BanglaMonths.toBanglaDigits(preview.protisthanCount)}টি প্রতিষ্ঠান, '
+            '${BanglaMonths.toBanglaDigits(preview.protisthanCount)}টি থানা, '
             '${BanglaMonths.toBanglaDigits(preview.wardCount)}টি ওয়ার্ড, '
-            '${BanglaMonths.toBanglaDigits(preview.criteriaCount)}টি ক্রাইটেরিয়া এবং '
+            '${BanglaMonths.toBanglaDigits(preview.criteriaCount)}টি খাত এবং '
             '${BanglaMonths.toBanglaDigits(preview.entryCount)}টি এন্ট্রি আছে।\n\n'
             'ইমপোর্ট করলে অ্যাপে বর্তমানে থাকা সকল ডেটা মুছে গিয়ে এই ব্যাকআপ দিয়ে প্রতিস্থাপিত হবে। '
             'এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
@@ -104,7 +104,7 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'সকল প্রতিষ্ঠান, ওয়ার্ড, ক্রাইটেরিয়া ও এন্ট্রি ডেটা একটি JSON ফাইলে সংরক্ষণ করুন। '
+                      'সকল থানা, ওয়ার্ড, খাত ও এন্ট্রি ডেটা একটি JSON ফাইলে সংরক্ষণ করুন। '
                       'ফাইলটি শেয়ার করে অন্য ডিভাইসে বা নিরাপদ স্থানে রাখতে পারবেন।',
                     ),
                     const SizedBox(height: 12),
