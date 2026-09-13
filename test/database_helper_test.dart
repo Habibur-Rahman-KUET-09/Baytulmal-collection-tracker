@@ -475,12 +475,21 @@ void main() {
     expect(matrix.combinedGrandTotal, 8000);
   });
 
-  test('থানা row has no নিসাব/আয়/ব্যয়/বাস্তব জমা of its own — special columns stay absent', () async {
-    final pId = await addProtisthan('থানা স্পেশাল টেস্ট');
+  test('থানা row shows নিসাব(fixed at creation)/আয়(manual)/বাস্তব জমা(=আয়), '
+      'but ব্যয় stays absent (never entered on থানার আয় পাতা)', () async {
+    final pId = await db.insertProtisthan(
+      Protisthan(uuid: 'p-thana-special', name: 'থানা স্পেশাল টেস্ট', createdAt: DateTime.now().toIso8601String()),
+      thanaNisab: 10000,
+    );
     final wId = await addWard(pId, 'ওয়ার্ড ১');
+    final thanaWard = await db.getThanaWard(pId);
     final criteria = await db.getCriteriaForProtisthan(pId);
+    final nisab = criteria.firstWhere((c) => c.isFixedTarget);
     final income = criteria.firstWhere((c) => c.specialOrder == 2);
     final expense = criteria.firstWhere((c) => c.specialOrder == 3);
+    final deposit = criteria.firstWhere((c) => c.isComputedDeposit);
+
+    // Real ward's own আয়/ব্যয় — unaffected by থানার আয়.
     await db.saveEntry(
       wardId: wId,
       criteriaId: income.id!,
@@ -497,13 +506,69 @@ void main() {
       amount: 2000,
       uuidFactory: _uuid.v4(),
     );
+    // থানার নিজস্ব আয় (manual, থানার আয় পাতায়)।
+    await db.saveEntry(
+      wardId: thanaWard!.id!,
+      criteriaId: income.id!,
+      month: 9,
+      year: 2026,
+      amount: 1500,
+      uuidFactory: _uuid.v4(),
+    );
 
     final matrix = await db.getMatrixReport(pId, 9, 2026);
-    expect(matrix.thanaRow.containsKey(income.id), isFalse);
-    expect(matrix.thanaRow.containsKey(expense.id), isFalse);
-    expect(matrix.thanaRowTotal, 0);
-    // Special columns' combined total == ward-only colTotals (থানা adds nothing).
-    expect(matrix.combinedColTotals[income.id], matrix.colTotals[income.id]);
-    expect(matrix.combinedColTotals[expense.id], matrix.colTotals[expense.id]);
+    expect(matrix.thanaRow[nisab.id], 10000); // থানা তৈরির সময়ের ফিক্সড নিসাব
+    expect(matrix.thanaRow[income.id], 1500); // ম্যানুয়াল আয়
+    expect(matrix.thanaRow[deposit.id], 1500); // বাস্তব জমা = আয় (ব্যয় কখনো এন্ট্রি হয় না)
+    expect(matrix.thanaRow.containsKey(expense.id), isFalse); // ব্যয়ের ঘর খালি
+    // rowTotal exclusion rule ward-এর মতোই: নিসাব ও আয় বাদে, তাই শুধু
+    // বাস্তব জমা(১৫০০) যোগ হয় (ব্যয় অনুপস্থিত = ০, normal খাত নেই)।
+    expect(matrix.thanaRowTotal, 1500);
+    expect(matrix.combinedGrandTotal, matrix.grandTotal + 1500);
+    // Special columns' combined total picks up থানার নিজস্ব মান।
+    expect(matrix.combinedColTotals[nisab.id], matrix.colTotals[nisab.id]! + 10000);
+    expect(matrix.combinedColTotals[income.id], matrix.colTotals[income.id]! + 1500);
+    expect(matrix.combinedColTotals[expense.id], matrix.colTotals[expense.id]); // থানা adds nothing
+  });
+
+  test('থানার নিসাব ইনপুট থানা তৈরির সময় নেওয়া হয় এবং পরে এডিট করা যায়', () async {
+    final pId = await db.insertProtisthan(
+      Protisthan(uuid: 'p-thana-nisab', name: 'থানা নিসাব টেস্ট', createdAt: DateTime.now().toIso8601String()),
+      thanaNisab: 5000,
+    );
+    final thanaWard = await db.getThanaWard(pId);
+    expect(thanaWard!.targetAmount, 5000);
+
+    await db.updateThanaWardTarget(pId, 7500);
+    final updated = await db.getThanaWard(pId);
+    expect(updated!.targetAmount, 7500);
+    // থানার নাম/id অপরিবর্তিত থাকে, শুধু নিসাব বদলায়।
+    expect(updated.id, thanaWard.id);
+    expect(updated.name, 'থানা');
+  });
+
+  test('getThanaActualDeposit (special-only) vs getThanaIncomeTotal (combined with normal খাত)', () async {
+    final pId = await addProtisthan('থানা আয় বনাম বাস্তব জমা টেস্ট');
+    final cId = await addCriteria(pId, 'দোকান ভাড়া');
+    final thanaWard = await db.getThanaWard(pId);
+    final criteria = await db.getCriteriaForProtisthan(pId);
+    final income = criteria.firstWhere((c) => c.specialOrder == 2);
+
+    await db.saveEntry(
+      wardId: thanaWard!.id!,
+      criteriaId: income.id!,
+      month: 9,
+      year: 2026,
+      amount: 2000,
+      uuidFactory: _uuid.v4(),
+    );
+    await db.saveEntry(wardId: thanaWard.id!, criteriaId: cId, month: 9, year: 2026, amount: 800, uuidFactory: _uuid.v4());
+
+    // শুধু স্পেশাল আয়/বাস্তব জমা — normal খাত অন্তর্ভুক্ত নয়। রিমিট্যান্স
+    // পাতার থানার নিসাব হিসাবে ব্যবহৃত।
+    expect(await db.getThanaActualDeposit(pId, 9, 2026), 2000);
+    // থানা রো-এর সম্পূর্ণ টোটাল — normal খাতসহ। "থানার মাসিক কালেকশন এক
+    // নজরে"-র "+ থানার আয়" ধাপে ব্যবহৃত।
+    expect(await db.getThanaIncomeTotal(pId, 9, 2026), 2800);
   });
 }

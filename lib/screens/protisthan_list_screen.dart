@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../db/database_helper.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/bangla_utils.dart';
@@ -28,26 +29,26 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   }
 
   Future<void> _addProtisthan(BuildContext context) async {
-    final name = await showNameInputDialog(
+    final result = await showProtisthanInputDialog(
       context,
       title: 'নতুন থানা যোগ করুন',
-      label: 'থানার নাম',
-      hintText: 'যেমনঃ কারওয়ান বাজার',
     );
-    if (name != null && name.isNotEmpty && context.mounted) {
-      await context.read<AppDataProvider>().addProtisthan(name);
+    if (result != null && result.name.isNotEmpty && context.mounted) {
+      await context.read<AppDataProvider>().addProtisthan(result.name, thanaNisab: result.nisab);
     }
   }
 
   Future<void> _editProtisthan(BuildContext context, Protisthan p) async {
-    final name = await showNameInputDialog(
+    final thanaWard = await DatabaseHelper.instance.getThanaWard(p.id!);
+    if (!context.mounted) return;
+    final result = await showProtisthanInputDialog(
       context,
       title: 'থানার নাম সম্পাদনা',
-      label: 'থানার নাম',
-      initialValue: p.name,
+      initialName: p.name,
+      initialNisab: thanaWard?.targetAmount ?? 0,
     );
-    if (name != null && name.isNotEmpty && context.mounted) {
-      await context.read<AppDataProvider>().renameProtisthan(p, name);
+    if (result != null && result.name.isNotEmpty && context.mounted) {
+      await context.read<AppDataProvider>().renameProtisthan(p, result.name, thanaNisab: result.nisab);
     }
   }
 

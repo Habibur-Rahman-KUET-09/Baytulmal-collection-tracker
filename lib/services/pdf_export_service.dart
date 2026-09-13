@@ -111,14 +111,15 @@ class PdfExportService {
       ],
     );
 
-    // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) — special-criteria কলাম
-    // খালি থাকে, যেহেতু থানার নিজস্ব নিসাব/আয়/ব্যয়/বাস্তব জমা নেই।
-    final thanaRow = pw.TableRow(
+    // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) + নিসাব(১, থানা তৈরির সময়
+    // ফিক্সড)/আয়(২, ম্যানুয়াল)/বাস্তব জমা(৪, অটো=আয়) — শুধু ব্যয়(৩) খালি
+    // থাকে, যেহেতু থানার ব্যয় এখানে কখনো এন্ট্রি হয় না।
+    final thanaRowWidget = pw.TableRow(
       children: [
         cell(await label('থানা'), alignment: pw.Alignment.centerLeft),
         for (final c in data.criteriaList)
           cell(pw.Text(
-            c.isSpecial ? '' : CurrencyFormatter.cellDisplay(data.thanaAmountFor(c.id!)),
+            data.thanaRow.containsKey(c.id!) ? CurrencyFormatter.cellDisplay(data.thanaAmountFor(c.id!)) : '',
             style: numberStyle,
           )),
         cell(pw.Text(
@@ -144,11 +145,12 @@ class PdfExportService {
       ],
     );
 
-    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "থানার বাস্তব জমা", always computed
-    // — no separate manually-typed figure to cross-check anymore):
-    //   ১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা (auto — sum of all wards' আয় − ব্যয়)
+    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "থানার নিসাব", always computed —
+    // no separate manually-typed figure to cross-check anymore):
+    //   ১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা (auto — real wards' আয়−ব্যয় +
+    //      থানার নিজস্ব আয়/বাস্তব জমা)
     //   ২. থানার ব্যয় (manually entered)
-    final protisthanActualDeposit = actualDepositTotal - protisthanExpenseAmount;
+    final thanaNisab = actualDepositTotal - protisthanExpenseAmount;
 
     // দুইটা বক্সের শেয়ার্ড হেডিং — নিচের বক্স-রো তে বসে, দুইটার আলাদা কোনো
     // হেডিং নেই (ডান বক্সের নিজস্ব হেডিং ছাড়া, সেটা section heading নয়)।
@@ -159,7 +161,7 @@ class PdfExportService {
     final remittanceLabels = await Future.wait([
       label('১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা'),
       label('২. থানার ব্যয়'),
-      label('থানার বাস্তব জমা (১ - ২)', bold: true),
+      label('থানার নিসাব (১ - ২)', bold: true),
     ]);
 
     pw.Widget remittanceRow(pw.Widget labelWidget, double amount, {bool bold = false}) {
@@ -177,15 +179,15 @@ class PdfExportService {
     }
 
     // Second box (bottom-right): সকল খাতের হিসাব (ওয়ার্ড ও থানা মিলিয়ে) — ৪টা
-    // special criteria collapsed into একটা "থানার বাস্তব জমা / নিসাব" row
-    // (= উচ্চ কর্তৃপক্ষে জমার হিসাব বক্সের ফলাফল) + আলাদা "থানার ব্যয়" ও
-    // "ওয়ার্ডের মোট ব্যয়" rows, তারপর সব normal খাত — এখন combinedColTotals
-    // থেকে (ওয়ার্ড + থানা row একসাথে), শুধু ওয়ার্ড-only colTotals নয়। এই
-    // বক্সের নিজস্ব total সবসময় ম্যাট্রিক্স টেবিলের নতুন "থানাসহ সর্বমোট"
-    // ঘরের সমান — see DatabaseHelper.getMatrixReport.
+    // special criteria collapsed into একটা "থানার নিসাব" row (= উচ্চ
+    // কর্তৃপক্ষে জমার হিসাব বক্সের ফলাফল) + আলাদা "থানার ব্যয়" ও "ওয়ার্ডের
+    // মোট ব্যয়" rows, তারপর সব normal খাত — combinedColTotals থেকে (ওয়ার্ড +
+    // থানা row একসাথে), শুধু ওয়ার্ড-only colTotals নয়। এই বক্সের নিজস্ব total
+    // সবসময় ম্যাট্রিক্স টেবিলের নতুন "থানাসহ সর্বমোট" ঘরের সমান — see
+    // DatabaseHelper.getMatrixReport.
     final normalCriteria = data.criteriaList.where((c) => !c.isSpecial).toList();
     final totalBoxHeading = await label('সকল খাতের হিসাব (ওয়ার্ড ও থানা মিলিয়ে)', fontSize: 13, bold: true);
-    final protisthanActualDepositLabel = await label('থানার বাস্তব জমা / নিসাব');
+    final thanaNisabLabel = await label('থানার নিসাব');
     final wardExpenseLabel = await label('ওয়ার্ডের মোট ব্যয়');
     final protisthanExpenseLabel = await label('থানার ব্যয়');
     final normalCriteriaLabels = await Future.wait(normalCriteria.map((c) => label(c.name)));
@@ -194,7 +196,7 @@ class PdfExportService {
     final normalCriteriaTotal =
         normalCriteria.fold<double>(0, (sum, c) => sum + (data.combinedColTotals[c.id!] ?? 0));
     final totalBoxTotal =
-        protisthanActualDeposit + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
+        thanaNisab + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
 
     doc.addPage(
       pw.MultiPage(
@@ -206,7 +208,7 @@ class PdfExportService {
           pw.SizedBox(height: 16),
           pw.Table(
             border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            children: [headerRow, ...wardRows, grandRow, thanaRow, combinedGrandRow],
+            children: [headerRow, ...wardRows, grandRow, thanaRowWidget, combinedGrandRow],
           ),
           pw.SizedBox(height: 12),
           footerNote,
@@ -229,7 +231,7 @@ class PdfExportService {
                     remittanceRow(remittanceLabels[0], actualDepositTotal),
                     remittanceRow(remittanceLabels[1], protisthanExpenseAmount),
                     pw.Divider(color: PdfColors.grey400, height: 12),
-                    remittanceRow(remittanceLabels[2], protisthanActualDeposit, bold: true),
+                    remittanceRow(remittanceLabels[2], thanaNisab, bold: true),
                   ],
                 ),
               ),
@@ -246,7 +248,7 @@ class PdfExportService {
                   children: [
                     totalBoxHeading,
                     pw.SizedBox(height: 8),
-                    remittanceRow(protisthanActualDepositLabel, protisthanActualDeposit),
+                    remittanceRow(thanaNisabLabel, thanaNisab),
                     remittanceRow(wardExpenseLabel, wardExpenseTotal),
                     remittanceRow(protisthanExpenseLabel, protisthanExpenseAmount),
                     for (var i = 0; i < normalCriteria.length; i++)

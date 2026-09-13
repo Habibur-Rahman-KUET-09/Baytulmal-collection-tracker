@@ -56,12 +56,15 @@ class ExcelExportService {
       DoubleCellValue(data.grandTotal),
     ]);
 
-    // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) — special-criteria কলাম
-    // খালি থাকে, যেহেতু থানার নিজস্ব নিসাব/আয়/ব্যয়/বাস্তব জমা নেই।
+    // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) + নিসাব(১)/আয়(২)/বাস্তব
+    // জমা(৪) — শুধু ব্যয়(৩) খালি থাকে, যেহেতু থানার ব্যয় এখানে কখনো এন্ট্রি
+    // হয় না।
     sheet.appendRow([
       TextCellValue('থানা'),
       ...data.criteriaList.map(
-        (c) => c.isSpecial ? TextCellValue('') : DoubleCellValue(data.thanaAmountFor(c.id!)),
+        (c) => data.thanaRow.containsKey(c.id!)
+            ? DoubleCellValue(data.thanaAmountFor(c.id!))
+            : TextCellValue(''),
       ),
       DoubleCellValue(data.thanaRowTotal),
     ]);
@@ -72,35 +75,35 @@ class ExcelExportService {
       DoubleCellValue(data.combinedGrandTotal),
     ]);
 
-    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "থানার বাস্তব জমা", always computed
-    // — no separate manually-typed figure anymore), matching the PDF
+    // উচ্চ কর্তৃপক্ষে জমার হিসাব (১ - ২ = "থানার নিসাব", always computed —
+    // no separate manually-typed figure anymore), matching the PDF
     // report's box.
-    final protisthanActualDeposit = actualDepositTotal - protisthanExpenseAmount;
+    final thanaNisab = actualDepositTotal - protisthanExpenseAmount;
 
     sheet.appendRow([TextCellValue('')]);
     sheet.appendRow([TextCellValue('উচ্চ কর্তৃপক্ষে জমার হিসাব')]);
     sheet.appendRow([TextCellValue('১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা'), DoubleCellValue(actualDepositTotal)]);
     sheet.appendRow([TextCellValue('২. থানার ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
     sheet.appendRow([
-      TextCellValue('থানার বাস্তব জমা (১ - ২)'),
-      DoubleCellValue(protisthanActualDeposit),
+      TextCellValue('থানার নিসাব (১ - ২)'),
+      DoubleCellValue(thanaNisab),
     ]);
 
     // Second box: সকল খাতের হিসাব (ওয়ার্ড ও থানা মিলিয়ে) — ৪টা special
-    // criteria collapsed into একটা "থানার বাস্তব জমা / নিসাব" row (= উচ্চ
-    // কর্তৃপক্ষে জমার হিসাব বক্সের ফলাফল) + আলাদা "থানার ব্যয়" ও "ওয়ার্ডের
-    // মোট ব্যয়" রো, তারপর সব normal খাত — combinedColTotals থেকে (ওয়ার্ড +
-    // থানা row একসাথে)। এই বক্সের নিজস্ব total সবসময় ম্যাট্রিক্স টেবিলের
-    // "থানাসহ সর্বমোট" ঘরের সমান।
+    // criteria collapsed into একটা "থানার নিসাব" row (= উচ্চ কর্তৃপক্ষে
+    // জমার হিসাব বক্সের ফলাফল) + আলাদা "থানার ব্যয়" ও "ওয়ার্ডের মোট ব্যয়"
+    // রো, তারপর সব normal খাত — combinedColTotals থেকে (ওয়ার্ড + থানা row
+    // একসাথে)। এই বক্সের নিজস্ব total সবসময় ম্যাট্রিক্স টেবিলের "থানাসহ
+    // সর্বমোট" ঘরের সমান।
     final normalCriteria = data.criteriaList.where((c) => !c.isSpecial).toList();
     final normalCriteriaTotal =
         normalCriteria.fold<double>(0, (sum, c) => sum + (data.combinedColTotals[c.id!] ?? 0));
     final totalBoxTotal =
-        protisthanActualDeposit + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
+        thanaNisab + wardExpenseTotal + protisthanExpenseAmount + normalCriteriaTotal;
 
     sheet.appendRow([TextCellValue('')]);
     sheet.appendRow([TextCellValue('সকল খাতের হিসাব (ওয়ার্ড ও থানা মিলিয়ে)')]);
-    sheet.appendRow([TextCellValue('থানার বাস্তব জমা / নিসাব'), DoubleCellValue(protisthanActualDeposit)]);
+    sheet.appendRow([TextCellValue('থানার নিসাব'), DoubleCellValue(thanaNisab)]);
     sheet.appendRow([TextCellValue('ওয়ার্ডের মোট ব্যয়'), DoubleCellValue(wardExpenseTotal)]);
     sheet.appendRow([TextCellValue('থানার ব্যয়'), DoubleCellValue(protisthanExpenseAmount)]);
     for (final c in normalCriteria) {

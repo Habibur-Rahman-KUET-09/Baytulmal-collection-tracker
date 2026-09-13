@@ -40,13 +40,15 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final data = await db.getMatrixReport(widget.protisthan.id!, _month, _year);
-    final actualDepositTotal = await db.getProtisthanActualDepositTotal(widget.protisthan.id!, _month, _year);
+    final wardActualDeposit = await db.getProtisthanActualDepositTotal(widget.protisthan.id!, _month, _year);
+    final thanaActualDeposit = await db.getThanaActualDeposit(widget.protisthan.id!, _month, _year);
     final wardExpenseTotal = await db.getWardExpenseTotal(widget.protisthan.id!, _month, _year);
     final remittance = await db.getRemittance(widget.protisthan.id!, _month, _year);
     if (!mounted) return;
     setState(() {
       _data = data;
-      _actualDepositTotal = actualDepositTotal;
+      // থানাসহ সকল ওয়ার্ডের বাস্তব জমা — real wards' যোগফল + থানার নিজস্ব আয়।
+      _actualDepositTotal = wardActualDeposit + thanaActualDeposit;
       _wardExpenseTotal = wardExpenseTotal;
       _protisthanExpenseAmount = remittance?.expenseAmount ?? 0;
       _loading = false;
@@ -216,7 +218,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                         const DataCell(Text('থানা')),
                         ...data.criteriaList.map(
                           (c) => DataCell(Text(
-                            c.isSpecial ? '' : CurrencyFormatter.cellDisplay(data.thanaAmountFor(c.id!)),
+                            data.thanaRow.containsKey(c.id!)
+                                ? CurrencyFormatter.cellDisplay(data.thanaAmountFor(c.id!))
+                                : '',
                           )),
                         ),
                         DataCell(Text(

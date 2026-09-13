@@ -33,13 +33,19 @@ class AppDataProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addProtisthan(String name) async {
-    await db.insertProtisthan(Protisthan(uuid: newUuid(), name: name, createdAt: nowIso()));
+  Future<void> addProtisthan(String name, {double thanaNisab = 0}) async {
+    await db.insertProtisthan(
+      Protisthan(uuid: newUuid(), name: name, createdAt: nowIso()),
+      thanaNisab: thanaNisab,
+    );
     await refresh();
   }
 
-  Future<void> renameProtisthan(Protisthan p, String newName) async {
+  Future<void> renameProtisthan(Protisthan p, String newName, {double? thanaNisab}) async {
     await db.updateProtisthan(p.copyWith(name: newName));
+    if (thanaNisab != null) {
+      await db.updateThanaWardTarget(p.id!, thanaNisab);
+    }
     await refresh();
   }
 

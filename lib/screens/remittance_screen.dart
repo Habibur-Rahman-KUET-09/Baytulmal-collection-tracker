@@ -9,9 +9,10 @@ import '../widgets/month_picker_field.dart';
 
 /// থানার বাস্তব জমা খরচ — a separate, per-Protisthan/month page tracking how
 /// much of this Protisthan's collection was actually remitted upward:
-/// ১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা (auto, = sum of all wards' আয়−ব্যয়) −
-/// ২. থানার ব্যয় (manual) gives "থানার বাস্তব জমা", which is always
-/// computed, not typed.
+/// ১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা (auto = sum of all real wards' আয়−ব্যয়
+/// PLUS থানার নিজস্ব আয়/বাস্তব জমা, see [DatabaseHelper.getThanaActualDeposit])
+/// − ২. থানার ব্যয় (manual) gives "থানার নিসাব", which is always computed,
+/// not typed.
 class RemittanceScreen extends StatefulWidget {
   final Protisthan protisthan;
   const RemittanceScreen({super.key, required this.protisthan});
@@ -52,11 +53,12 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final total = await db.getProtisthanActualDepositTotal(widget.protisthan.id!, _month, _year);
+    final wardTotal = await db.getProtisthanActualDepositTotal(widget.protisthan.id!, _month, _year);
+    final thanaDeposit = await db.getThanaActualDeposit(widget.protisthan.id!, _month, _year);
     final remittance = await db.getRemittance(widget.protisthan.id!, _month, _year);
     if (!mounted) return;
     setState(() {
-      _actualDepositTotal = total;
+      _actualDepositTotal = wardTotal + thanaDeposit;
       _expenseCtrl.text = remittance == null || remittance.expenseAmount == 0
           ? ''
           : _trimZero(remittance.expenseAmount);
@@ -88,7 +90,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
   @override
   Widget build(BuildContext context) {
     final expense = double.tryParse(_expenseCtrl.text.trim()) ?? 0;
-    final protisthanActualDeposit = _actualDepositTotal - expense;
+    final thanaNisab = _actualDepositTotal - expense;
 
     return Scaffold(
       appBar: AppBar(title: Text('থানার বাস্তব জমা খরচ (${widget.protisthan.name})')),
@@ -129,8 +131,8 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 const Divider(),
                 const SizedBox(height: 4),
                 _StatRow(
-                  label: 'থানার বাস্তব জমা (১ - ২)',
-                  value: CurrencyFormatter.format(protisthanActualDeposit),
+                  label: 'থানার নিসাব (১ - ২)',
+                  value: CurrencyFormatter.format(thanaNisab),
                   bold: true,
                 ),
                 const SizedBox(height: 24),

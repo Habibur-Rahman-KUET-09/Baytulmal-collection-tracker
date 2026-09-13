@@ -272,9 +272,12 @@ class DatabaseHelper {
   }
 
   /// Creates this Protisthan's hidden থানা ward if it doesn't already
-  /// exist. Safe to call repeatedly (e.g. right after creating a
-  /// Protisthan, and defensively during the v4->v5 migration).
-  Future<void> ensureThanaWard(int protisthanId, {Database? db}) async {
+  /// exist, with its ধার্যকৃত নিসাব (special criteria ১) fixed at
+  /// [targetAmount] — taken as input when the থানা itself is created (or
+  /// edited later, see [updateThanaWardTarget]), mirroring how a real
+  /// ward's নিসাব works. Safe to call repeatedly (e.g. right after creating
+  /// a Protisthan, and defensively during the v4->v5 migration).
+  Future<void> ensureThanaWard(int protisthanId, {double targetAmount = 0, Database? db}) async {
     final database = db ?? await this.database;
     final existing = await database.query(
       'ward',
@@ -287,7 +290,7 @@ class DatabaseHelper {
       'protisthan_id': protisthanId,
       'name': 'থানা',
       'created_at': DateTime.now().toIso8601String(),
-      'target_amount': 0,
+      'target_amount': targetAmount,
       'is_thana_ward': 1,
     });
   }
@@ -306,14 +309,48 @@ class DatabaseHelper {
     return Ward.fromMap(rows.first);
   }
 
-  /// থানার আয়: this Protisthan's থানা ward's own direct collections against
-  /// normal (non-special) খাত for a month — entered on the থানার আয় screen.
+  /// Updates the হিডেন থানা ward's ধার্যকৃত নিসাব (special criteria ১) — used
+  /// when editing a থানা's নিসাব after creation. No-op if the থানা ward
+  /// somehow doesn't exist yet.
+  Future<void> updateThanaWardTarget(int protisthanId, double targetAmount) async {
+    final thanaWard = await getThanaWard(protisthanId);
+    if (thanaWard == null) return;
+    await updateWard(thanaWard.copyWith(targetAmount: targetAmount));
+  }
+
+  /// থানার নিজস্ব আয় (special criteria ২, manually entered on থানার আয়
+  /// স্ক্রিন) — থানার ব্যয়(৩) কখনো এন্ট্রি হয় না (সেটা আলাদা "থানার বাস্তব জমা
+  /// খরচ" স্ক্রিনে মাসিক ম্যানুয়াল ফিগার হিসেবে থাকে), তাই থানার বাস্তব জমা(৪)
+  /// সবসময় এই আয়(২) এর সমান। normal খাত অন্তর্ভুক্ত নয় — তুলনা করুন
+  /// [getThanaIncomeTotal], যেটা normal খাতসহ থানা রো-এর সম্পূর্ণ টোটাল।
+  Future<double> getThanaActualDeposit(int protisthanId, int month, int year) async {
+    final thanaWard = await getThanaWard(protisthanId);
+    if (thanaWard == null) return 0;
+    final criteriaList = await getCriteriaForProtisthan(protisthanId);
+    final entries = await getEntriesForWardMonth(thanaWard.id!, month, year);
+    int? incomeId;
+    for (final c in criteriaList) {
+      if (c.specialOrder == _specialIncomeOrder) incomeId = c.id;
+    }
+    return entries[incomeId] ?? 0.0;
+  }
+
+  /// থানা রো-এর সম্পূর্ণ টোটাল (matches [MatrixReportData.thanaRowTotal]) —
+  /// থানার নিজস্ব বাস্তব জমা([getThanaActualDeposit]) + normal খাতের যোগফল,
+  /// একই exclusion rule অনুসারে যা একটি বাস্তব ওয়ার্ডের টোটালে প্রযোজ্য
+  /// (ধার্যকৃত নিসাব ও আয় বাদে — এখানে আয়ের অবদান বাস্তব জমার মধ্য দিয়েই
+  /// যুক্ত হয়ে যায়)। "থানার মাসিক কালেকশন এক নজরে"-র "+ থানার আয়" ধাপে
+  /// ব্যবহৃত।
   Future<double> getThanaIncomeTotal(int protisthanId, int month, int year) async {
     final thanaWard = await getThanaWard(protisthanId);
     if (thanaWard == null) return 0;
     final criteriaList = await getCriteriaForProtisthan(protisthanId);
     final entries = await getEntriesForWardMonth(thanaWard.id!, month, year);
-    double total = 0;
+    int? incomeId;
+    for (final c in criteriaList) {
+      if (c.specialOrder == _specialIncomeOrder) incomeId = c.id;
+    }
+    double total = entries[incomeId] ?? 0.0; // থানার বাস্তব জমা(৪) = আয়(২)
     for (final c in criteriaList) {
       if (!c.isSpecial) total += entries[c.id] ?? 0.0;
     }
@@ -326,13 +363,14 @@ class DatabaseHelper {
 
   /// Also seeds this Protisthan's ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা
   /// special criteria (section 4/5 of the special-criteria feature) and its
-  /// hidden থানা ward (see [ensureThanaWard]) so every Protisthan always has
-  /// them, without the caller needing to know about that detail.
-  Future<int> insertProtisthan(Protisthan p) async {
+  /// hidden থানা ward (see [ensureThanaWard]) — [thanaNisab] becomes that
+  /// hidden ward's fixed ধার্যকৃত নিসাব, taken as input alongside the থানার
+  /// নাম itself, just like a real ward's নিসাব is taken at ward creation.
+  Future<int> insertProtisthan(Protisthan p, {double thanaNisab = 0}) async {
     final db = await database;
     final id = await db.insert('protisthan', p.toMap()..remove('id'));
     await ensureSpecialCriteria(id, db: db);
-    await ensureThanaWard(id, db: db);
+    await ensureThanaWard(id, targetAmount: thanaNisab, db: db);
     return id;
   }
 
@@ -684,9 +722,10 @@ class DatabaseHelper {
   /// total.
   ///
   /// Also computes a separate থানা row (this Protisthan's hidden থানা
-  /// ward's own normal-খাত entries — থানার আয় — with all special-criteria
-  /// columns left blank, since থানা has no নিসাব/আয়/ব্যয়/বাস্তব জমা of its
-  /// own) plus থানাসহ সর্বমোট combined totals (ward totals + থানা row).
+  /// ward's own normal-খাত entries — থানার আয় — plus its নিসাব(১, fixed at
+  /// থানা creation), আয়(২, manual entry) and বাস্তব জমা(৪, auto = আয়, since
+  /// থানার ব্যয়(৩) never has an Entry here — its column stays blank) )
+  /// plus থানাসহ সর্বমোট combined totals (ward totals + থানা row).
   Future<MatrixReportData> getMatrixReport(int protisthanId, int month, int year) async {
     final wards = await getWardsForProtisthan(protisthanId);
     final criteriaList = await getCriteriaForProtisthan(protisthanId);
@@ -748,11 +787,32 @@ class DatabaseHelper {
     final thanaRow = <int, double>{};
     double thanaRowTotal = 0;
     if (thanaWard != null) {
+      // ধার্যকৃত নিসাব(১): থানা তৈরির সময় নেওয়া fixed value, ward-এর মতোই।
+      if (targetCriteria != null) {
+        thanaRow[targetCriteria.id!] = thanaWard.targetAmount;
+      }
+      // আয়(২): থানার আয় পাতায় ম্যানুয়াল এন্ট্রি (raw query থেকে cells-এ আগে
+      // থেকেই আছে, যেহেতু is_thana_ward দিয়ে ফিল্টার করা হয়নি)।
+      final thanaIncome = cells[thanaWard.id]?[incomeCriteria?.id] ?? 0.0;
+      if (incomeCriteria != null) {
+        thanaRow[incomeCriteria.id!] = thanaIncome;
+      }
+      // ব্যয়(৩): থানার আয় পাতায় কখনো এন্ট্রি হয় না (আলাদা "থানার বাস্তব জমা
+      // খরচ" পাতায় মাসিক ম্যানুয়াল ফিগার) — তাই এই কলাম ইচ্ছাকৃতভাবে thanaRow-এ
+      // অনুপস্থিত থাকে (UI-তে খালি দেখানোর জন্য), এবং বাস্তব জমা(৪) সবসময়
+      // আয়(২)-এর সমান হয় (ব্যয় বাদ = ০)।
+      if (depositCriteria != null) {
+        thanaRow[depositCriteria.id!] = thanaIncome;
+      }
       for (final c in criteriaList) {
-        if (c.isSpecial) continue; // থানার নিজস্ব নিসাব/আয়/ব্যয়/বাস্তব জমা নেই
-        final v = cells[thanaWard.id]?[c.id] ?? 0.0;
-        thanaRow[c.id!] = v;
-        thanaRowTotal += v;
+        if (c.isSpecial) continue;
+        thanaRow[c.id!] = cells[thanaWard.id]?[c.id] ?? 0.0;
+      }
+      // rowTotal-এর exclusion rule ward-এর মতোই: নিসাব(১) ও আয়(২) বাদে
+      // (ব্যয় thanaRow-এ অনুপস্থিত থাকায় স্বাভাবিকভাবেই ০ ধরা হয়)।
+      for (final c in criteriaList) {
+        if (c.isFixedTarget || c.specialOrder == _specialIncomeOrder) continue;
+        thanaRowTotal += thanaRow[c.id!] ?? 0.0;
       }
     }
 

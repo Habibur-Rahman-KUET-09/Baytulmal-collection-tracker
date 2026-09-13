@@ -6,17 +6,22 @@ import '../db/database_helper.dart';
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
+import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/month_picker_field.dart';
 
-/// থানার আয় — থানার নিজস্ব প্রত্যক্ষ কালেকশন, খাত (normal criteria) অনুযায়ী।
-/// এখানে কোনো নিসাব/আয়/ব্যয়/বাস্তব জমা সেকশন নেই — থানার ব্যয় আলাদাভাবে
-/// "থানার বাস্তব জমা খরচ" পাতায় টাইপ করা হয়, আর থানার বাস্তব জমা ওয়ার্ডের
-/// মতোই ম্যাট্রিক্স রিপোর্টে অটো-ক্যালকুলেট হয় (থানা রো = এই স্ক্রিনের
-/// ইনপুটগুলোর যোগফল)। সংরক্ষণ হয় প্রতিষ্ঠানের হিডেন ভার্চুয়াল থানা-ওয়ার্ডের
-/// বিপরীতে (দেখুন [DatabaseHelper.getThanaWard]), যাতে ওয়ার্ড/এন্ট্রি সংক্রান্ত
-/// বিদ্যমান মেশিনারি পুনঃব্যবহার করা যায়।
+/// থানার আয় — থানার নিজস্ব প্রত্যক্ষ কালেকশন। খাত (normal criteria) অনুযায়ী
+/// ইনপুটের পাশাপাশি আয় (special criteria ২) এর জন্যও একটা আলাদা,
+/// ওয়ার্ডের এন্ট্রি ফর্মের মতো হাইলাইটেড ইনপুট থাকে — ধার্যকৃত নিসাব(১)
+/// থানা তৈরির সময় ফিক্সড হয় ([DatabaseHelper.ensureThanaWard]/
+/// [DatabaseHelper.updateThanaWardTarget]) তাই এখানে ইনপুট নেই, শুধু
+/// রেফারেন্স হিসেবে দেখানো হয়। থানার ব্যয়(৩) এখানে কখনো এন্ট্রি হয় না
+/// (আলাদাভাবে "থানার বাস্তব জমা খরচ" পাতায় মাসিক ম্যানুয়াল ফিগার) — তাই
+/// বাস্তব জমা(৪) সবসময় আয়(২)-এর সমান, এখানে শুধু রেফারেন্স হিসেবে দেখানো
+/// হয়, কোনো Entry হয় না। সংরক্ষণ হয় প্রতিষ্ঠানের হিডেন ভার্চুয়াল
+/// থানা-ওয়ার্ডের বিপরীতে (দেখুন [DatabaseHelper.getThanaWard]), যাতে
+/// ওয়ার্ড/এন্ট্রি সংক্রান্ত বিদ্যমান মেশিনারি পুনঃব্যবহার করা যায়।
 class ThanaIncomeScreen extends StatefulWidget {
   final Protisthan protisthan;
   final int initialMonth;
@@ -40,6 +45,8 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
   late int _month;
   late int _year;
   int? _thanaWardId;
+  double _thanaTargetAmount = 0;
+  Criteria? _incomeCriteria;
   List<Criteria> _normalCriteria = [];
   final Map<int, TextEditingController> _controllers = {};
   bool _loading = true;
@@ -66,6 +73,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     final thanaWard = await db.getThanaWard(widget.protisthan.id!);
     final criteriaList = await db.getCriteriaForProtisthan(widget.protisthan.id!);
     final normalCriteria = criteriaList.where((c) => !c.isSpecial).toList();
+    final incomeCriteria = criteriaList.firstWhere((c) => c.specialOrder == 2);
     final existing = thanaWard == null
         ? <int, double>{}
         : await db.getEntriesForWardMonth(thanaWard.id!, _month, _year);
@@ -74,7 +82,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
       c.dispose();
     }
     _controllers.clear();
-    for (final c in normalCriteria) {
+    for (final c in [incomeCriteria, ...normalCriteria]) {
       final value = existing[c.id];
       _controllers[c.id!] = TextEditingController(
         text: value == null ? '' : _trimZero(value),
@@ -84,6 +92,8 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     if (!mounted) return;
     setState(() {
       _thanaWardId = thanaWard?.id;
+      _thanaTargetAmount = thanaWard?.targetAmount ?? 0;
+      _incomeCriteria = incomeCriteria;
       _normalCriteria = normalCriteria;
       _loading = false;
     });
@@ -108,7 +118,8 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     setState(() => _saving = true);
     final appData = context.read<AppDataProvider>();
     try {
-      for (final c in _normalCriteria) {
+      final allCriteria = [?_incomeCriteria, ..._normalCriteria];
+      for (final c in allCriteria) {
         final text = _controllers[c.id!]!.text.trim();
         final amount = text.isEmpty ? null : double.parse(text);
         await db.saveEntry(
@@ -130,7 +141,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     }
   }
 
-  Widget _criteriaField(Criteria c) {
+  Widget _criteriaField(Criteria c, {ValueChanged<String>? onChanged}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -142,6 +153,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
           hintText: 'খালি',
           border: const OutlineInputBorder(),
         ),
+        onChanged: onChanged,
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
           final parsed = double.tryParse(v.trim());
@@ -155,6 +167,13 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final incomeCriteria = _incomeCriteria;
+    final incomeText = incomeCriteria == null ? '' : (_controllers[incomeCriteria.id!]?.text.trim() ?? '');
+    final income = double.tryParse(incomeText) ?? 0;
+    final hasTarget = _thanaTargetAmount > 0;
+    final matched = hasTarget && (_thanaTargetAmount - income).abs() < 0.005;
+    final incomeFilled = incomeText.isNotEmpty;
+
     return Scaffold(
       appBar: AppBar(title: const Text('থানার আয়')),
       body: _loading
@@ -167,6 +186,71 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                   const Text('মাস নির্বাচন করুন', style: TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   MonthPickerField(month: _month, year: _year, onChanged: _onMonthChanged),
+                  if (incomeCriteria != null) ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text('আয়', style: TextStyle(fontWeight: FontWeight.bold)),
+                              ),
+                              if (hasTarget)
+                                Text(
+                                  'ধার্যকৃত নিসাব: ${CurrencyFormatter.format(_thanaTargetAmount)}',
+                                  style: TextStyle(color: Colors.grey.shade700, fontSize: 12.5),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          _criteriaField(incomeCriteria, onChanged: (_) => setState(() {})),
+                          if (incomeFilled)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: (hasTarget ? (matched ? Colors.green : Colors.orange) : Colors.blueGrey)
+                                    .withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    !hasTarget
+                                        ? Icons.info_outline
+                                        : matched
+                                            ? Icons.check_circle_outline
+                                            : Icons.info_outline,
+                                    size: 18,
+                                    color: hasTarget ? (matched ? Colors.green : Colors.orange) : Colors.blueGrey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      !hasTarget
+                                          ? 'বাস্তব জমা (আয়) = ${CurrencyFormatter.format(income)}'
+                                          : matched
+                                              ? 'বাস্তব জমা (আয়) = ${CurrencyFormatter.format(income)} '
+                                                  '— ধার্যকৃত নিসাবের সাথে মিলেছে'
+                                              : 'বাস্তব জমা (আয়) = ${CurrencyFormatter.format(income)} '
+                                                  '— ধার্যকৃত নিসাব ${CurrencyFormatter.format(_thanaTargetAmount)}',
+                                      style: const TextStyle(fontSize: 12.5),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   const Text(
                     'খাত অনুযায়ী থানার আয় (সবগুলো ঐচ্ছিক)',
@@ -179,10 +263,10 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                       message: 'এই থানার জন্য কোনো খাত নেই।',
                     )
                   else
-                    ..._normalCriteria.map(_criteriaField),
+                    ..._normalCriteria.map((c) => _criteriaField(c)),
                   const SizedBox(height: 12),
                   FilledButton(
-                    onPressed: (_normalCriteria.isEmpty || _saving) ? null : _save,
+                    onPressed: _saving ? null : _save,
                     child: _saving
                         ? const SizedBox(
                             width: 20,

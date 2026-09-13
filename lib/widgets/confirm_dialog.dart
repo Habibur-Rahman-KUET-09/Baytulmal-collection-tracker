@@ -82,6 +82,83 @@ Future<String?> showNameInputDialog(
   return result;
 }
 
+class ProtisthanInputResult {
+  final String name;
+  final double nisab;
+  const ProtisthanInputResult({required this.name, required this.nisab});
+}
+
+/// Add/rename dialog for a থানা — also collects/edits its hidden থানা
+/// ward's fixed ধার্যকৃত নিসাব (special criteria ১), same pattern as
+/// [showWardInputDialog].
+Future<ProtisthanInputResult?> showProtisthanInputDialog(
+  BuildContext context, {
+  required String title,
+  String? initialName,
+  double initialNisab = 0,
+}) async {
+  final nameCtrl = TextEditingController(text: initialName ?? '');
+  final nisabCtrl = TextEditingController(
+    text: initialNisab == 0 ? '' : _trimZero(initialNisab),
+  );
+  final formKey = GlobalKey<FormState>();
+
+  final result = await showDialog<ProtisthanInputResult>(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: Text(title),
+      content: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              controller: nameCtrl,
+              autofocus: true,
+              decoration: const InputDecoration(labelText: 'থানার নাম'),
+              textInputAction: TextInputAction.next,
+              validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: nisabCtrl,
+              decoration: const InputDecoration(
+                labelText: 'ধার্যকৃত নিসাব (৳)',
+                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে।',
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              textInputAction: TextInputAction.done,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return null;
+                if (double.tryParse(v.trim()) == null) return 'সঠিক সংখ্যা দিন';
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('বাতিল'),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (formKey.currentState!.validate()) {
+              Navigator.of(context).pop(ProtisthanInputResult(
+                name: nameCtrl.text.trim(),
+                nisab: double.tryParse(nisabCtrl.text.trim()) ?? 0,
+              ));
+            }
+          },
+          child: const Text('সংরক্ষণ করুন'),
+        ),
+      ],
+    ),
+  );
+  return result;
+}
+
 class WardInputResult {
   final String name;
   final double targetAmount;

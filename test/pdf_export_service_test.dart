@@ -47,11 +47,15 @@ void main() {
       rowTotals: {1: 13500, 2: 7000},
       colTotals: {1: 35000, 2: 12000, 3: 3000, 4: 9000, 5: 8500},
       grandTotal: 20500,
-      // থানার নিজস্ব normal-খাত কালেকশন (থানার আয়) — special columns বাদে।
-      thanaRow: {5: 1200},
-      thanaRowTotal: 1200,
-      combinedColTotals: {1: 35000, 2: 12000, 3: 3000, 4: 9000, 5: 9700},
-      combinedGrandTotal: 21700,
+      // থানার নিজস্ব নিসাব(১, থানা তৈরির সময়ের ফিক্সড)/আয়(২, ম্যানুয়াল)/
+      // বাস্তব জমা(৪, অটো=আয়) + normal-খাত কালেকশন — ব্যয়(৩) অনুপস্থিত
+      // (কখনো এন্ট্রি হয় না)।
+      thanaRow: {1: 8000, 2: 1000, 4: 1000, 5: 1200},
+      // exclusion rule ward-এর মতোই (নিসাব ও আয় বাদে): ব্যয়(অনুপস্থিত=০) +
+      // বাস্তব জমা(১০০০) + normal(১২০০) = ২২০০।
+      thanaRowTotal: 2200,
+      combinedColTotals: {1: 43000, 2: 13000, 3: 3000, 4: 10000, 5: 9700},
+      combinedGrandTotal: 22700,
     );
 
     final path = '${Directory.systemTemp.path}/pdf_export_service_test.pdf';
@@ -61,7 +65,9 @@ void main() {
       month: 9,
       year: 2026,
       data: data,
-      actualDepositTotal: 9000,
+      // ward-only বাস্তব জমা(৯০০০) + থানার নিজস্ব বাস্তব জমা(১০০০, থানা রো-এ
+      // যা আছে তার সাথে সামঞ্জস্যপূর্ণ) — Round F অনুযায়ী থানাসহ combined।
+      actualDepositTotal: 10000,
       wardExpenseTotal: 3000,
       protisthanExpenseAmount: 2000,
     );
