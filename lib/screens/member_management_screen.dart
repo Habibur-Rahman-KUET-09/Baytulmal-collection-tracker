@@ -72,16 +72,8 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
     final s = Strings.of(context);
     final result = await _showAddMemberDialog(s);
     if (result == null) return;
-    final uid = await _cloud.findUidByEmail(result.email);
-    if (!mounted) return;
-    if (uid == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.memberNoUserFound)),
-      );
-      return;
-    }
     try {
-      await _cloud.addOrUpdateMember(widget.protisthan.uuid, uid, result.role, email: result.email);
+      await _cloud.addOrUpdateMember(widget.protisthan.uuid, result.uid, result.role, email: result.email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.memberAdded)),
@@ -96,8 +88,11 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
   }
 
   Future<_AddMemberResult?> _showAddMemberDialog(Strings s) {
-    final emailController = TextEditingController();
+    final searchController = TextEditingController();
     var selectedRole = _assignableRoles.last;
+    List<(String uid, String? email, String? displayName)> searchResults = [];
+    String? selectedUid;
+
     return showDialog<_AddMemberResult>(
       context: context,
       builder: (dialogContext) {
@@ -105,28 +100,71 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
               title: Text(s.addMemberTitle),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    maxLength: 254,
-                    decoration: InputDecoration(
-                      labelText: s.memberEmailLabel,
-                      hintText: 'user@example.com',
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: searchController,
+                      keyboardType: TextInputType.emailAddress,
+                      maxLength: 254,
+                      decoration: InputDecoration(
+                        labelText: s.memberEmailLabel,
+                        hintText: 'user@example.com',
+                      ),
+                      onChanged: (query) async {
+                        if (query.trim().isEmpty) {
+                          setDialogState(() {
+                            searchResults = [];
+                            selectedUid = null;
+                          });
+                          return;
+                        }
+                        final results = await _cloud.searchUsers(query);
+                        setDialogState(() {
+                          searchResults = results;
+                          selectedUid = results.isNotEmpty ? results.first.$1 : null;
+                        });
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<ProtisthanRole>(
-                    initialValue: selectedRole,
-                    decoration: InputDecoration(labelText: s.memberRoleLabel),
-                    items: _assignableRoles
-                        .map((r) => DropdownMenuItem(value: r, child: Text(s.roleLabel(r))))
-                        .toList(),
-                    onChanged: (r) => setDialogState(() => selectedRole = r ?? selectedRole),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    if (searchController.text.trim().isNotEmpty)
+                      Flexible(
+                        child: searchResults.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(s.memberNoUserFound, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error)),
+                              )
+                            : ListView.builder(
+                                shrinkWrap: true,
+                                itemCount: searchResults.length,
+                                itemBuilder: (ctx, idx) {
+                                  final (uid, email, displayName) = searchResults[idx];
+                                  return ListTile(
+                                    title: Text(displayName?.isNotEmpty == true ? displayName! : (email ?? uid)),
+                                    subtitle: email != null ? Text(email) : null,
+                                    trailing: Radio<String>(
+                                      value: uid,
+                                      groupValue: selectedUid,
+                                      onChanged: (v) => setDialogState(() => selectedUid = v),
+                                    ),
+                                    onTap: () => setDialogState(() => selectedUid = uid),
+                                  );
+                                },
+                              ),
+                      ),
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<ProtisthanRole>(
+                      initialValue: selectedRole,
+                      decoration: InputDecoration(labelText: s.memberRoleLabel),
+                      items: _assignableRoles
+                          .map((r) => DropdownMenuItem(value: r, child: Text(s.roleLabel(r))))
+                          .toList(),
+                      onChanged: (r) => setDialogState(() => selectedRole = r ?? selectedRole),
+                    ),
+                  ],
+                ),
               ),
               actions: [
                 TextButton(
@@ -134,11 +172,12 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                   child: Text(s.cancel),
                 ),
                 FilledButton(
-                  onPressed: () {
-                    final email = emailController.text.trim();
-                    if (!_isValidEmail(email)) return;
-                    Navigator.of(dialogContext).pop(_AddMemberResult(email, selectedRole));
-                  },
+                  onPressed: selectedUid != null
+                      ? () {
+                          final selected = searchResults.firstWhere((r) => r.$1 == selectedUid);
+                          Navigator.of(dialogContext).pop(_AddMemberResult(selectedUid!, selected.$2, selectedRole));
+                        }
+                      : null,
                   child: Text(s.addButton),
                 ),
               ],
@@ -271,11 +310,8 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
 }
 
 class _AddMemberResult {
-  final String email;
+  final String uid;
+  final String? email;
   final ProtisthanRole role;
-  const _AddMemberResult(this.email, this.role);
+  const _AddMemberResult(this.uid, this.email, this.role);
 }
-
-final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
-
-bool _isValidEmail(String email) => email.length <= 254 && _emailPattern.hasMatch(email);

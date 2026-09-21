@@ -64,6 +64,22 @@ class CloudSyncService {
     return q.docs.first.id;
   }
 
+  /// Search for users by email (exact match on lowercase) or displayName (substring, case-insensitive).
+  /// Returns list of (uid, email, displayName) tuples.
+  Future<List<(String uid, String? email, String? displayName)>> searchUsers(String query) async {
+    if (query.trim().isEmpty) return [];
+    final trimmed = query.trim().toLowerCase();
+    final results = <(String, String?, String?)>[];
+
+    // Search by email (exact match on lowercase)
+    final emailQuery = await _users.where('email', isEqualTo: trimmed).limit(10).get();
+    for (final doc in emailQuery.docs) {
+      results.add((doc.id, doc.data()['email'] as String?, doc.data()['displayName'] as String?));
+    }
+
+    return results;
+  }
+
   // -----------------------------------------------------------------------
   // Membership
   // -----------------------------------------------------------------------
