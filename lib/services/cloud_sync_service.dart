@@ -182,31 +182,50 @@ class CloudSyncService {
     await _protisthans.doc(p.uuid).set(data, SetOptions(merge: true));
   }
 
+  /// Deletes a থানা and everything under it. Every delete here only
+  /// depends on state that already existed before this call started (the
+  /// caller's own `creator` membership, checked once by `firestore.rules`
+  /// against the pre-batch snapshot) — unlike creation, no delete here
+  /// depends on another delete in the same batch having landed first — so
+  /// all five collections can be read in parallel and every doc deleted
+  /// via chunked batches committed together, instead of one get+commit
+  /// round-trip per collection.
   Future<void> deleteProtisthanCloud(String protisthanUuid) async {
     final ref = _protisthans.doc(protisthanUuid);
-    final members = await ref.collection('members').get();
-    final batch = _fs.batch();
-    for (final m in members.docs) {
-      batch.delete(m.reference);
-      batch.delete(_users.doc(m.id).collection('memberships').doc(protisthanUuid));
-    }
-    batch.delete(ref);
-    await batch.commit();
-    await _deleteAllDocs(ref.collection('wards'));
-    await _deleteAllDocs(ref.collection('criteria'));
-    await _deleteAllDocs(ref.collection('entries'));
-    await _deleteAllDocs(ref.collection('remittances'));
-  }
 
-  Future<void> _deleteAllDocs(CollectionReference<Map<String, dynamic>> ref) async {
-    final snap = await ref.get();
-    for (var i = 0; i < snap.docs.length; i += _batchChunkSize) {
+    final membersFuture = ref.collection('members').get();
+    final wardsFuture = ref.collection('wards').get();
+    final criteriaFuture = ref.collection('criteria').get();
+    final entriesFuture = ref.collection('entries').get();
+    final remittancesFuture = ref.collection('remittances').get();
+
+    final members = await membersFuture;
+    final wards = await wardsFuture;
+    final criteria = await criteriaFuture;
+    final entries = await entriesFuture;
+    final remittances = await remittancesFuture;
+
+    final deletes = <DocumentReference<Map<String, dynamic>>>[
+      for (final m in members.docs) ...[
+        m.reference,
+        _users.doc(m.id).collection('memberships').doc(protisthanUuid),
+      ],
+      for (final d in wards.docs) d.reference,
+      for (final d in criteria.docs) d.reference,
+      for (final d in entries.docs) d.reference,
+      for (final d in remittances.docs) d.reference,
+      ref,
+    ];
+
+    final commits = <Future<void>>[];
+    for (var i = 0; i < deletes.length; i += _batchChunkSize) {
       final batch = _fs.batch();
-      for (final d in snap.docs.skip(i).take(_batchChunkSize)) {
-        batch.delete(d.reference);
+      for (final docRef in deletes.skip(i).take(_batchChunkSize)) {
+        batch.delete(docRef);
       }
-      await batch.commit();
+      commits.add(batch.commit());
     }
+    await Future.wait(commits);
   }
 
   Future<void> pushWard(String protisthanUuid, Ward w) async {
