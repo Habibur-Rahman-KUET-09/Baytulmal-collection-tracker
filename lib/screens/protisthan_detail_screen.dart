@@ -13,6 +13,7 @@ import '../widgets/empty_state.dart';
 import 'criteria_management_screen.dart';
 import 'entry_form_screen.dart';
 import 'matrix_report_screen.dart';
+import 'member_management_screen.dart';
 import 'protisthan_summary_screen.dart';
 import 'remittance_screen.dart';
 import 'thana_income_screen.dart';
@@ -327,6 +328,14 @@ class _SummaryTab extends StatelessWidget {
           subtitle: 'একাধিক মাসের কালেকশন গ্রাফ আকারে তুলনা করুন',
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => TrendScreen(protisthan: protisthan)),
+          ),
+        ),
+        _SummaryCard(
+          icon: Icons.group_outlined,
+          title: 'সদস্য ব্যবস্থাপনা',
+          subtitle: 'এই থানার সদস্য তালিকা, রোল ও প্রবেশাধিকার',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => MemberManagementScreen(protisthan: protisthan)),
           ),
         ),
       ],
