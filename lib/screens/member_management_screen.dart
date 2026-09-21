@@ -100,6 +100,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                   TextField(
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
+                    maxLength: 254,
                     decoration: const InputDecoration(
                       labelText: 'ইমেইল',
                       hintText: 'user@example.com',
@@ -124,7 +125,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                 FilledButton(
                   onPressed: () {
                     final email = emailController.text.trim();
-                    if (email.isEmpty || !email.contains('@')) return;
+                    if (!_isValidEmail(email)) return;
                     Navigator.of(dialogContext).pop(_AddMemberResult(email, selectedRole));
                   },
                   child: const Text('যোগ করুন'),
@@ -260,3 +261,7 @@ class _AddMemberResult {
   final ProtisthanRole role;
   const _AddMemberResult(this.email, this.role);
 }
+
+final _emailPattern = RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$');
+
+bool _isValidEmail(String email) => email.length <= 254 && _emailPattern.hasMatch(email);

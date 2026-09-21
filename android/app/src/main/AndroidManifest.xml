@@ -2,10 +2,24 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!--
+      OWASP Mobile M9/M2 hardening:
+      - allowBackup=false + fullBackupContent=false: stops `adb backup`
+        and Android's auto cloud backup from extracting this app's local
+        SQLite cache (Firestore-mirrored financial/collection records)
+        onto another device without going through Firebase Auth at all.
+      - usesCleartextTraffic=false: the app only talks to Firebase, which
+        is TLS-only anyway, but this blocks any accidental/future plain
+        HTTP request outright instead of relying on that always holding.
+    -->
+
     <application
         android:label="বাইতুলমাল কালেকশন ট্র্যাকার"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

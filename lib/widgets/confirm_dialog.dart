@@ -53,6 +53,7 @@ Future<String?> showNameInputDialog(
         child: TextFormField(
           controller: controller,
           autofocus: true,
+          maxLength: 100,
           decoration: InputDecoration(labelText: label, hintText: hintText),
           validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
           textInputAction: TextInputAction.done,
@@ -115,6 +116,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
             TextFormField(
               controller: nameCtrl,
               autofocus: true,
+              maxLength: 100,
               decoration: const InputDecoration(labelText: 'থানার নাম'),
               textInputAction: TextInputAction.next,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
@@ -130,7 +132,9 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                if (double.tryParse(v.trim()) == null) return 'সঠিক সংখ্যা দিন';
+                final parsed = double.tryParse(v.trim());
+                if (parsed == null) return 'সঠিক সংখ্যা দিন';
+                if (parsed < 0) return 'ঋণাত্মক মান গ্রহণযোগ্য নয়';
                 return null;
               },
             ),
@@ -192,6 +196,7 @@ Future<WardInputResult?> showWardInputDialog(
             TextFormField(
               controller: nameCtrl,
               autofocus: true,
+              maxLength: 100,
               decoration: const InputDecoration(labelText: 'ওয়ার্ডের নাম'),
               textInputAction: TextInputAction.next,
               validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
@@ -209,7 +214,9 @@ Future<WardInputResult?> showWardInputDialog(
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                if (double.tryParse(v.trim()) == null) return 'সঠিক সংখ্যা দিন';
+                final parsed = double.tryParse(v.trim());
+                if (parsed == null) return 'সঠিক সংখ্যা দিন';
+                if (parsed < 0) return 'ঋণাত্মক মান গ্রহণযোগ্য নয়';
                 return null;
               },
             ),

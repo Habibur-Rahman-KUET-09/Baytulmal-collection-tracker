@@ -121,7 +121,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) return 'পাসওয়ার্ড আবশ্যক';
-    if (_isSignUp && value.length < 6) return 'কমপক্ষে ৬ অক্ষর দিন';
+    if (_isSignUp) {
+      if (value.length < 8) return 'কমপক্ষে ৮ অক্ষর দিন';
+      if (!RegExp(r'[0-9]').hasMatch(value)) return 'অন্তত একটি সংখ্যা দিন';
+    }
     return null;
   }
 
