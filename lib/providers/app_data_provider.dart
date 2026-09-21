@@ -90,9 +90,7 @@ class AppDataProvider extends ChangeNotifier {
   /// know.
   Future<void> _refreshLocalView() async {
     final all = await db.getAllProtisthan();
-    final visible = _uid == null ? all : all.where((p) => myRoles.containsKey(p.uuid)).toList();
-    visible.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    protisthanList = visible;
+    protisthanList = _uid == null ? all : all.where((p) => myRoles.containsKey(p.uuid)).toList();
     wardCounts = await db.getWardCountsByProtisthan();
     criteriaCounts = await db.getCriteriaCountsByProtisthan();
     notifyListeners();

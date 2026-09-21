@@ -39,7 +39,11 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
   Future<void> _load() async {
     setState(() => _loading = true);
     final members = await _cloud.getMembers(widget.protisthan.uuid);
-    members.sort((a, b) => a.role.index.compareTo(b.role.index));
+    String label(Membership m) => (m.displayName?.isNotEmpty == true ? m.displayName! : (m.email ?? m.uid)).toLowerCase();
+    members.sort((a, b) {
+      final byRole = a.role.index.compareTo(b.role.index);
+      return byRole != 0 ? byRole : label(a).compareTo(label(b));
+    });
     if (!mounted) return;
     setState(() {
       _members = members;

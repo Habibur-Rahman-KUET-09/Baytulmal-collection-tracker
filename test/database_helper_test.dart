@@ -265,8 +265,8 @@ void main() {
     expect(criteria[1].isSpecial, isTrue);
     expect(criteria[2].isSpecial, isTrue);
     expect(criteria[3].isSpecial, isTrue);
-    expect(criteria[4].name, 'দোকান ভাড়া');
-    expect(criteria[5].name, 'টোল');
+    expect(criteria[4].name, 'টোল');
+    expect(criteria[5].name, 'দোকান ভাড়া');
   });
 
   test('deleteCriteria throws for a special criteria (ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা cannot be deleted)', () async {

@@ -387,7 +387,7 @@ class DatabaseHelper {
 
   Future<List<Protisthan>> getAllProtisthan() async {
     final db = await database;
-    final rows = await db.query('protisthan', orderBy: 'id ASC');
+    final rows = await db.query('protisthan', orderBy: 'name COLLATE NOCASE ASC, id ASC');
     return rows.map(Protisthan.fromMap).toList();
   }
 
@@ -442,7 +442,7 @@ class DatabaseHelper {
       'criteria',
       where: 'protisthan_id = ?',
       whereArgs: [protisthanId],
-      orderBy: 'CASE WHEN special_order IS NULL THEN 1 ELSE 0 END, special_order ASC, id ASC',
+      orderBy: 'CASE WHEN special_order IS NULL THEN 1 ELSE 0 END, special_order ASC, name COLLATE NOCASE ASC, id ASC',
     );
     return rows.map(Criteria.fromMap).toList();
   }
@@ -474,7 +474,7 @@ class DatabaseHelper {
       'ward',
       where: 'protisthan_id = ? AND is_thana_ward = 0',
       whereArgs: [protisthanId],
-      orderBy: 'id ASC',
+      orderBy: 'name COLLATE NOCASE ASC, id ASC',
     );
     return rows.map(Ward.fromMap).toList();
   }
