@@ -11,6 +11,7 @@ import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 import 'account_screen.dart';
 import 'data_management_screen.dart';
+import 'member_management_screen.dart';
 import 'protisthan_detail_screen.dart';
 
 /// Screen 1: প্রতিষ্ঠান তালিকা (Home) — FR-1.1, FR-1.2.
@@ -116,20 +117,24 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                           subtitle: Text(
                             '${BanglaMonths.toBanglaDigits(wardCount)}টি ওয়ার্ড · ${BanglaMonths.toBanglaDigits(criteriaCount)}টি খাত',
                           ),
-                          trailing: (canEdit || canDelete)
-                              ? PopupMenuButton<String>(
-                                  onSelected: (value) {
-                                    if (value == 'edit') _editProtisthan(context, p);
-                                    if (value == 'delete') _deleteProtisthan(context, p);
-                                  },
-                                  itemBuilder: (context) => [
-                                    if (canEdit)
-                                      const PopupMenuItem(value: 'edit', child: Text('নাম সম্পাদনা')),
-                                    if (canDelete)
-                                      const PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
-                                  ],
-                                )
-                              : null,
+                          trailing: PopupMenuButton<String>(
+                            onSelected: (value) {
+                              if (value == 'members') {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(builder: (_) => MemberManagementScreen(protisthan: p)),
+                                );
+                              }
+                              if (value == 'edit') _editProtisthan(context, p);
+                              if (value == 'delete') _deleteProtisthan(context, p);
+                            },
+                            itemBuilder: (context) => [
+                              const PopupMenuItem(value: 'members', child: Text('সদস্য ব্যবস্থাপনা')),
+                              if (canEdit)
+                                const PopupMenuItem(value: 'edit', child: Text('নাম সম্পাদনা')),
+                              if (canDelete)
+                                const PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
+                            ],
+                          ),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => ProtisthanDetailScreen(protisthan: p)),
                           ),
