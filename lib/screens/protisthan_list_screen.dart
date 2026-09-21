@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
-import '../utils/bangla_utils.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
@@ -32,9 +32,10 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   }
 
   Future<void> _addProtisthan(BuildContext context) async {
+    final s = Strings.of(context);
     final result = await showProtisthanInputDialog(
       context,
-      title: 'নতুন থানা যোগ করুন',
+      title: s.homeAddProtisthanTitle,
     );
     if (result != null && result.name.isNotEmpty && context.mounted) {
       await context.read<AppDataProvider>().addProtisthan(result.name, thanaNisab: result.nisab);
@@ -42,11 +43,12 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   }
 
   Future<void> _editProtisthan(BuildContext context, Protisthan p) async {
+    final s = Strings.of(context);
     final thanaWard = await DatabaseHelper.instance.getThanaWard(p.id!);
     if (!context.mounted) return;
     final result = await showProtisthanInputDialog(
       context,
-      title: 'থানার নাম সম্পাদনা',
+      title: s.homeEditProtisthanTitle,
       initialName: p.name,
       initialNisab: thanaWard?.targetAmount ?? 0,
     );
@@ -56,11 +58,11 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   }
 
   Future<void> _deleteProtisthan(BuildContext context, Protisthan p) async {
+    final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
       context,
-      title: 'থানা মুছে ফেলুন?',
-      message:
-          '"${p.name}" মুছে ফেললে এর সকল ওয়ার্ড, খাত এবং এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে। এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
+      title: s.homeDeleteProtisthanTitle,
+      message: s.homeDeleteProtisthanMessage(p.name),
     );
     if (confirmed && context.mounted) {
       await context.read<AppDataProvider>().deleteProtisthan(p.id!);
@@ -70,20 +72,21 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AppDataProvider>();
+    final s = Strings.of(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('বাইতুলমাল কালেকশন ট্র্যাকার'),
+        title: Text(s.appTitle),
         actions: [
           IconButton(
-            tooltip: 'ডেটা ব্যবস্থাপনা (এক্সপোর্ট/ইমপোর্ট)',
+            tooltip: s.homeDataManagementTooltip,
             icon: const Icon(Icons.settings_backup_restore),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const DataManagementScreen()),
             ),
           ),
           IconButton(
-            tooltip: 'আমার অ্যাকাউন্ট',
+            tooltip: s.homeAccountTooltip,
             icon: const Icon(Icons.account_circle_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const AccountScreen()),
@@ -94,9 +97,9 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
       body: provider.isLoading && provider.protisthanList.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : provider.protisthanList.isEmpty
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.account_balance_outlined,
-                  message: 'কোনো থানা যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি থানা যোগ করুন।',
+                  message: s.homeEmptyMessage,
                 )
               : RefreshIndicator(
                   onRefresh: provider.refresh,
@@ -114,9 +117,7 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
                           title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          subtitle: Text(
-                            '${BanglaMonths.toBanglaDigits(wardCount)}টি ওয়ার্ড · ${BanglaMonths.toBanglaDigits(criteriaCount)}টি খাত',
-                          ),
+                          subtitle: Text(s.homeWardCriteriaCount(wardCount, criteriaCount)),
                           trailing: PopupMenuButton<String>(
                             onSelected: (value) {
                               if (value == 'members') {
@@ -128,11 +129,11 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                               if (value == 'delete') _deleteProtisthan(context, p);
                             },
                             itemBuilder: (context) => [
-                              const PopupMenuItem(value: 'members', child: Text('সদস্য ব্যবস্থাপনা')),
+                              PopupMenuItem(value: 'members', child: Text(s.homeMembersMenuItem)),
                               if (canEdit)
-                                const PopupMenuItem(value: 'edit', child: Text('নাম সম্পাদনা')),
+                                PopupMenuItem(value: 'edit', child: Text(s.rename)),
                               if (canDelete)
-                                const PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
+                                PopupMenuItem(value: 'delete', child: Text(s.delete)),
                             ],
                           ),
                           onTap: () => Navigator.of(context).push(

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../utils/bangla_utils.dart';
+
 enum AppLanguage { bn, en }
 
 const _prefsKey = 'app_language';
@@ -21,6 +23,7 @@ class LocaleProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(_prefsKey);
       if (saved == 'en') _language = AppLanguage.en;
+      BanglaMonths.useBangla = isBangla;
       notifyListeners();
     } catch (_) {
       // Local preference read failed — fall back to the bn default.
@@ -30,6 +33,7 @@ class LocaleProvider extends ChangeNotifier {
   Future<void> setLanguage(AppLanguage language) async {
     if (_language == language) return;
     _language = language;
+    BanglaMonths.useBangla = isBangla;
     notifyListeners();
     try {
       final prefs = await SharedPreferences.getInstance();

@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
-/// Bangla confirmation dialog required before any destructive action
+import '../l10n/strings.dart';
+
+/// Confirmation dialog required before any destructive action
 /// (FR-1.4, FR-2.4, FR-3.4, FR-7.2).
 Future<bool> showConfirmDialog(
   BuildContext context, {
   required String title,
   required String message,
-  String confirmLabel = 'মুছে ফেলুন',
-  String cancelLabel = 'বাতিল',
+  String? confirmLabel,
+  String? cancelLabel,
   bool isDestructive = true,
 }) async {
+  final s = Strings.of(context);
   final result = await showDialog<bool>(
     context: context,
     builder: (context) => AlertDialog(
@@ -18,14 +21,14 @@ Future<bool> showConfirmDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: Text(cancelLabel),
+          child: Text(cancelLabel ?? s.cancel),
         ),
         FilledButton(
           style: isDestructive
               ? FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error)
               : null,
           onPressed: () => Navigator.of(context).pop(true),
-          child: Text(confirmLabel),
+          child: Text(confirmLabel ?? s.delete),
         ),
       ],
     ),
@@ -40,8 +43,9 @@ Future<String?> showNameInputDialog(
   required String title,
   String? initialValue,
   String hintText = '',
-  String label = 'নাম',
+  String? label,
 }) async {
+  final s = Strings.of(context);
   final controller = TextEditingController(text: initialValue ?? '');
   final formKey = GlobalKey<FormState>();
   final result = await showDialog<String>(
@@ -54,8 +58,8 @@ Future<String?> showNameInputDialog(
           controller: controller,
           autofocus: true,
           maxLength: 100,
-          decoration: InputDecoration(labelText: label, hintText: hintText),
-          validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
+          decoration: InputDecoration(labelText: label ?? s.name, hintText: hintText),
+          validator: (v) => (v == null || v.trim().isEmpty) ? s.nameRequired : null,
           textInputAction: TextInputAction.done,
           onFieldSubmitted: (_) {
             if (formKey.currentState!.validate()) {
@@ -67,7 +71,7 @@ Future<String?> showNameInputDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('বাতিল'),
+          child: Text(s.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -75,7 +79,7 @@ Future<String?> showNameInputDialog(
               Navigator.of(context).pop(controller.text.trim());
             }
           },
-          child: const Text('সংরক্ষণ করুন'),
+          child: Text(s.save),
         ),
       ],
     ),
@@ -98,6 +102,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
   String? initialName,
   double initialNisab = 0,
 }) async {
+  final s = Strings.of(context);
   final nameCtrl = TextEditingController(text: initialName ?? '');
   final nisabCtrl = TextEditingController(
     text: initialNisab == 0 ? '' : _trimZero(initialNisab),
@@ -117,24 +122,24 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
               controller: nameCtrl,
               autofocus: true,
               maxLength: 100,
-              decoration: const InputDecoration(labelText: 'থানার নাম'),
+              decoration: InputDecoration(labelText: s.dialogProtisthanNameLabel),
               textInputAction: TextInputAction.next,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? s.nameRequired : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: nisabCtrl,
-              decoration: const InputDecoration(
-                labelText: 'ধার্যকৃত নিসাব (৳)',
-                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে।',
+              decoration: InputDecoration(
+                labelText: s.dialogNisabLabel,
+                helperText: s.dialogNisabHelperShort,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
                 final parsed = double.tryParse(v.trim());
-                if (parsed == null) return 'সঠিক সংখ্যা দিন';
-                if (parsed < 0) return 'ঋণাত্মক মান গ্রহণযোগ্য নয়';
+                if (parsed == null) return s.enterValidNumber;
+                if (parsed < 0) return s.negativeNotAllowed;
                 return null;
               },
             ),
@@ -144,7 +149,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('বাতিল'),
+          child: Text(s.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -155,7 +160,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
               ));
             }
           },
-          child: const Text('সংরক্ষণ করুন'),
+          child: Text(s.save),
         ),
       ],
     ),
@@ -178,6 +183,7 @@ Future<WardInputResult?> showWardInputDialog(
   String? initialName,
   double initialTargetAmount = 0,
 }) async {
+  final s = Strings.of(context);
   final nameCtrl = TextEditingController(text: initialName ?? '');
   final targetCtrl = TextEditingController(
     text: initialTargetAmount == 0 ? '' : _trimZero(initialTargetAmount),
@@ -197,17 +203,16 @@ Future<WardInputResult?> showWardInputDialog(
               controller: nameCtrl,
               autofocus: true,
               maxLength: 100,
-              decoration: const InputDecoration(labelText: 'ওয়ার্ডের নাম'),
+              decoration: InputDecoration(labelText: s.dialogWardNameLabel),
               textInputAction: TextInputAction.next,
-              validator: (v) => (v == null || v.trim().isEmpty) ? 'নাম আবশ্যক' : null,
+              validator: (v) => (v == null || v.trim().isEmpty) ? s.nameRequired : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: targetCtrl,
-              decoration: const InputDecoration(
-                labelText: 'ধার্যকৃত নিসাব (৳)',
-                helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের আয় ও ব্যয়ের '
-                    'সাথে মিলিয়ে দেখা হবে (আয় − ব্যয় = বাস্তব জমা)।',
+              decoration: InputDecoration(
+                labelText: s.dialogNisabLabel,
+                helperText: s.dialogNisabHelperLong,
                 helperMaxLines: 2,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -215,8 +220,8 @@ Future<WardInputResult?> showWardInputDialog(
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
                 final parsed = double.tryParse(v.trim());
-                if (parsed == null) return 'সঠিক সংখ্যা দিন';
-                if (parsed < 0) return 'ঋণাত্মক মান গ্রহণযোগ্য নয়';
+                if (parsed == null) return s.enterValidNumber;
+                if (parsed < 0) return s.negativeNotAllowed;
                 return null;
               },
             ),
@@ -226,7 +231,7 @@ Future<WardInputResult?> showWardInputDialog(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('বাতিল'),
+          child: Text(s.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -237,7 +242,7 @@ Future<WardInputResult?> showWardInputDialog(
               ));
             }
           },
-          child: const Text('সংরক্ষণ করুন'),
+          child: Text(s.save),
         ),
       ],
     ),

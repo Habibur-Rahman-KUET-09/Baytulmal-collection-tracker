@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../utils/bangla_utils.dart';
 import 'locale_provider.dart';
 
 /// Every user-facing string in the app, in Bangla and English. Screens read
@@ -25,6 +26,7 @@ class Strings {
   String get save => _t('সংরক্ষণ করুন', 'Save');
   String get delete => _t('মুছে ফেলুন', 'Delete');
   String get edit => _t('সম্পাদনা', 'Edit');
+  String get rename => _t('নাম সম্পাদনা', 'Rename');
   String get name => _t('নাম', 'Name');
   String get ok => _t('ঠিক আছে', 'OK');
   String get confirm => _t('নিশ্চিত করুন', 'Confirm');
@@ -34,6 +36,41 @@ class Strings {
   String get negativeNotAllowed => _t('ঋণাত্মক মান গ্রহণযোগ্য নয়', 'Negative values are not allowed');
   String get retry => _t('আবার চেষ্টা করুন', 'Retry');
   String get loading => _t('লোড হচ্ছে...', 'Loading...');
+  String get nameRequired => _t('নাম আবশ্যক', 'Name is required');
+
+  // ---- screens/protisthan_list_screen.dart (home) ----
+  String get homeDataManagementTooltip => _t('ডেটা ব্যবস্থাপনা (এক্সপোর্ট/ইমপোর্ট)', 'Data management (export/import)');
+  String get homeAccountTooltip => _t('আমার অ্যাকাউন্ট', 'My account');
+  String get homeEmptyMessage =>
+      _t('কোনো থানা যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি থানা যোগ করুন।', 'No থানা added yet.\nTap the + button below to add one.');
+  String homeWardCriteriaCount(int wardCount, int criteriaCount) {
+    final w = BanglaMonths.toBanglaDigits(wardCount);
+    final c = BanglaMonths.toBanglaDigits(criteriaCount);
+    return _t('$wটি ওয়ার্ড · $cটি খাত', '$w ward(s) · $c criteria');
+  }
+  String get homeMembersMenuItem => _t('সদস্য ব্যবস্থাপনা', 'Member management');
+  String get homeAddProtisthanTitle => _t('নতুন থানা যোগ করুন', 'Add new থানা');
+  String get homeEditProtisthanTitle => _t('থানার নাম সম্পাদনা', 'Edit থানা name');
+  String get homeDeleteProtisthanTitle => _t('থানা মুছে ফেলুন?', 'Delete থানা?');
+  String homeDeleteProtisthanMessage(String name) => _t(
+        '"$name" মুছে ফেললে এর সকল ওয়ার্ড, খাত এবং এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে। '
+            'এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
+        'Deleting "$name" will also permanently delete all its wards, criteria, '
+            'and entry data. This cannot be undone.',
+      );
+
+  // ---- widgets/confirm_dialog.dart ----
+  String get dialogProtisthanNameLabel => _t('থানার নাম', 'থানা name');
+  String get dialogWardNameLabel => _t('ওয়ার্ডের নাম', 'Ward name');
+  String get dialogNisabLabel => _t('ধার্যকৃত নিসাব (৳)', 'Target নিসাব (৳)');
+  String get dialogNisabHelperShort => _t('ঐচ্ছিক — খালি রাখলে ০ ধরা হবে।', 'Optional — treated as 0 if left blank.');
+  String get dialogNisabHelperLong => _t(
+        'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে। প্রতি মাসের আয় ও ব্যয়ের '
+            'সাথে মিলিয়ে দেখা হবে (আয় − ব্যয় = বাস্তব জমা)।',
+        'Optional — treated as 0 if left blank. Compared against each '
+            "month's income and expense (income − expense = actual "
+            'deposit).',
+      );
 
   // ---- App shell / auth gate ----
   String get authGateLoading => _t('লোড হচ্ছে...', 'Loading...');
