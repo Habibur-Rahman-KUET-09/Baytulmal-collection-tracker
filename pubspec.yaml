@@ -39,6 +39,14 @@ dependencies:
   # Stable IDs for future cloud-sync readiness (FR-7.3)
   uuid: ^4.4.2
 
+  # Firebase: Auth (email/password + Google) and Firestore as the primary
+  # data store, replacing local-only sqflite (kept for reading old backups
+  # during migration — see BackupService).
+  firebase_core: ^4.15.0
+  firebase_auth: ^6.7.0
+  cloud_firestore: ^6.10.0
+  google_sign_in: ^7.2.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

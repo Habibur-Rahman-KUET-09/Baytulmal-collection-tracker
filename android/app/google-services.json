@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "626419471655",
+    "project_id": "baitulmal-tracking-system",
+    "storage_bucket": "baitulmal-tracking-system.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:626419471655:android:feb7855e4901d20b398502",
+        "android_client_info": {
+          "package_name": "com.baytulmal.collection_tracker"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "626419471655-ctdrq1vblm71teeqvp7nktn1fbr76mg9.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAPNRkzRtlr5TM6n-cEuR-tt1d1RVSX2aI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "626419471655-ctdrq1vblm71teeqvp7nktn1fbr76mg9.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
