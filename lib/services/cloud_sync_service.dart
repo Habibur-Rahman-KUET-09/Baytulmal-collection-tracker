@@ -311,12 +311,20 @@ class CloudSyncService {
     final joinedAt = DateTime.now().toIso8601String();
     final protisthanRef = _protisthans.doc(p.uuid);
 
-    final bootstrap = _fs.batch();
-    bootstrap.set(
-      protisthanRef,
+    // The থানা doc must land FIRST, on its own — and be awaited — before
+    // the membership docs are written. `firestore.rules`' isOwner() check
+    // (which both the members/ and memberships/ create rules rely on)
+    // does a get() on this doc, and within a single WriteBatch every
+    // write is evaluated against the database state as it was BEFORE the
+    // batch commits — so bundling this write into the same batch as the
+    // membership docs would make isOwner() see a থানা doc that doesn't
+    // exist yet and fail with permission-denied.
+    await protisthanRef.set(
       {'name': p.name, 'createdAt': p.createdAt, 'ownerUid': uid},
       SetOptions(merge: true),
     );
+
+    final bootstrap = _fs.batch();
     bootstrap.set(
       protisthanRef.collection('members').doc(uid),
       {'email': email, 'displayName': displayName, 'role': ProtisthanRole.creator.name, 'joinedAt': joinedAt},
