@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../db/database_helper.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
+import '../services/auth_service.dart';
 import '../utils/bangla_utils.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
@@ -52,6 +53,19 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
     }
   }
 
+  Future<void> _signOut(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'লগআউট করবেন?',
+      message: 'আপনাকে আবার লগইন করতে হবে।',
+      confirmLabel: 'লগআউট',
+      isDestructive: false,
+    );
+    if (confirmed) {
+      await AuthService.instance.signOut();
+    }
+  }
+
   Future<void> _deleteProtisthan(BuildContext context, Protisthan p) async {
     final confirmed = await showConfirmDialog(
       context,
@@ -78,6 +92,11 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const DataManagementScreen()),
             ),
+          ),
+          IconButton(
+            tooltip: 'লগআউট',
+            icon: const Icon(Icons.logout),
+            onPressed: () => _signOut(context),
           ),
         ],
       ),

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 import 'providers/app_data_provider.dart';
-import 'screens/protisthan_list_screen.dart';
+import 'screens/auth/auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,7 +41,7 @@ class BaytulmalApp extends StatelessWidget {
           useMaterial3: true,
           fontFamily: 'NotoSansBengali',
         ),
-        home: const ProtisthanListScreen(),
+        home: const AuthGate(),
       ),
     );
   }
