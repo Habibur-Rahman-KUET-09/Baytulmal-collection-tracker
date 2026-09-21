@@ -213,8 +213,11 @@ class _AccountScreenState extends State<AccountScreen> {
       cancelLabel: s.cancel,
       isDestructive: false,
     );
-    if (confirmed) {
+    if (confirmed && mounted) {
       await AuthService.instance.signOut();
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     }
   }
 

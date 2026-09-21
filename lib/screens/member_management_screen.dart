@@ -80,12 +80,19 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
       );
       return;
     }
-    await _cloud.addOrUpdateMember(widget.protisthan.uuid, uid, result.role, email: result.email);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(s.memberAdded)),
-    );
-    _load();
+    try {
+      await _cloud.addOrUpdateMember(widget.protisthan.uuid, uid, result.role, email: result.email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.memberAdded)),
+      );
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e')),
+      );
+    }
   }
 
   Future<_AddMemberResult?> _showAddMemberDialog(Strings s) {
