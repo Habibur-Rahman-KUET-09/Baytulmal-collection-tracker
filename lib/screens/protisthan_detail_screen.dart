@@ -165,7 +165,7 @@ class _WardsTabState extends State<_WardsTab> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
-                    padding: safeBodyPadding(context, amount: 12),
+                    padding: safeBodyPadding(context, amount: 12, fab: canManage),
                     itemCount: _wards.length,
                     itemBuilder: (context, index) {
                       final w = _wards[index];

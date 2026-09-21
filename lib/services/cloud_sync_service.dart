@@ -125,6 +125,35 @@ class CloudSyncService {
     return {for (final d in snap.docs) d.id: roleFromString(d.data()['role'] as String? ?? 'member')};
   }
 
+  /// থানা names where the signed-in user is `creator` — account deletion
+  /// is blocked while this is non-empty (see AccountScreen): deleting the
+  /// account would leave that থানা with no one able to manage roles or
+  /// delete it.
+  Future<List<String>> myCreatorProtisthanNames() async {
+    final memberships = await myMemberships();
+    final names = <String>[];
+    for (final entry in memberships.entries) {
+      if (entry.value != ProtisthanRole.creator) continue;
+      final doc = await _protisthans.doc(entry.key).get();
+      names.add(doc.data()?['name'] as String? ?? entry.key);
+    }
+    return names;
+  }
+
+  /// Removes the signed-in user from every থানা they belong to and deletes
+  /// their `users/{uid}` profile — the Firestore-side cleanup right before
+  /// deleting their Firebase Auth account (see AuthService.deleteAccount).
+  /// Callers must first confirm [myCreatorProtisthanNames] is empty.
+  Future<void> deleteOwnAccountData() async {
+    final uid = _uid;
+    if (uid == null) return;
+    final memberships = await myMemberships();
+    for (final protisthanUuid in memberships.keys) {
+      await removeMember(protisthanUuid, uid);
+    }
+    await _users.doc(uid).delete();
+  }
+
   Future<bool> protisthanExists(String protisthanUuid) async {
     try {
       final doc = await _protisthans.doc(protisthanUuid).get();

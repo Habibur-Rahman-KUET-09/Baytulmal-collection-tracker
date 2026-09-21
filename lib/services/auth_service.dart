@@ -27,6 +27,15 @@ class AuthService {
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
+  /// True if this account can sign in with email/password — the account
+  /// screen only shows "পাসওয়ার্ড পরিবর্তন" for these (a Google-only account
+  /// has no password to change).
+  bool get isPasswordUser =>
+      currentUser?.providerData.any((p) => p.providerId == 'password') ?? false;
+
+  bool get isGoogleUser =>
+      currentUser?.providerData.any((p) => p.providerId == 'google.com') ?? false;
+
   Future<UserCredential> signUpWithEmail({
     required String email,
     required String password,
@@ -65,6 +74,58 @@ class AuthService {
     }
     final credential = GoogleAuthProvider.credential(idToken: idToken);
     return _auth.signInWithCredential(credential);
+  }
+
+  /// Only valid for [isPasswordUser] accounts — Firebase requires a recent
+  /// sign-in before a sensitive change like this, hence the reauth step.
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.email == null) {
+      throw FirebaseAuthException(code: 'no-current-user', message: 'সাইন-ইন করা নেই।');
+    }
+    final credential = EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
+  /// Re-authenticates right before a sensitive action (account deletion) —
+  /// Firebase requires a "recent" sign-in for these. For a password
+  /// account, [currentPassword] must be supplied; for a Google account it
+  /// re-triggers the Google sign-in flow instead.
+  Future<void> _reauthenticate({String? currentPassword}) async {
+    final user = _auth.currentUser;
+    if (user == null) {
+      throw FirebaseAuthException(code: 'no-current-user', message: 'সাইন-ইন করা নেই।');
+    }
+    if (isPasswordUser) {
+      if (currentPassword == null || currentPassword.isEmpty) {
+        throw FirebaseAuthException(code: 'missing-password', message: 'পাসওয়ার্ড আবশ্যক।');
+      }
+      final credential = EmailAuthProvider.credential(email: user.email!, password: currentPassword);
+      await user.reauthenticateWithCredential(credential);
+    } else {
+      await _ensureGoogleInitialized();
+      final account = await _googleSignIn.authenticate();
+      final idToken = account.authentication.idToken;
+      if (idToken == null) {
+        throw FirebaseAuthException(
+          code: 'missing-google-id-token',
+          message: 'Google থেকে আইডি টোকেন পাওয়া যায়নি।',
+        );
+      }
+      await user.reauthenticateWithCredential(GoogleAuthProvider.credential(idToken: idToken));
+    }
+  }
+
+  /// Deletes the signed-in Firebase Auth account itself. Callers must
+  /// clean up this user's Firestore profile/membership docs first (see
+  /// CloudSyncService) and confirm with the user — this cannot be undone.
+  Future<void> deleteAccount({String? currentPassword}) async {
+    await _reauthenticate(currentPassword: currentPassword);
+    await _auth.currentUser?.delete();
   }
 
   Future<void> signOut() async {

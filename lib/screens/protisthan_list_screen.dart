@@ -5,11 +5,11 @@ import '../db/database_helper.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
-import '../services/auth_service.dart';
 import '../utils/bangla_utils.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
+import 'account_screen.dart';
 import 'data_management_screen.dart';
 import 'protisthan_detail_screen.dart';
 
@@ -54,19 +54,6 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
     }
   }
 
-  Future<void> _signOut(BuildContext context) async {
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'লগআউট করবেন?',
-      message: 'আপনাকে আবার লগইন করতে হবে।',
-      confirmLabel: 'লগআউট',
-      isDestructive: false,
-    );
-    if (confirmed) {
-      await AuthService.instance.signOut();
-    }
-  }
-
   Future<void> _deleteProtisthan(BuildContext context, Protisthan p) async {
     final confirmed = await showConfirmDialog(
       context,
@@ -95,9 +82,11 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
             ),
           ),
           IconButton(
-            tooltip: 'লগআউট',
-            icon: const Icon(Icons.logout),
-            onPressed: () => _signOut(context),
+            tooltip: 'আমার অ্যাকাউন্ট',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const AccountScreen()),
+            ),
           ),
         ],
       ),
@@ -111,7 +100,7 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
               : RefreshIndicator(
                   onRefresh: provider.refresh,
                   child: ListView.builder(
-                    padding: safeBodyPadding(context, amount: 12),
+                    padding: safeBodyPadding(context, amount: 12, fab: true),
                     itemCount: provider.protisthanList.length,
                     itemBuilder: (context, index) {
                       final p = provider.protisthanList[index];

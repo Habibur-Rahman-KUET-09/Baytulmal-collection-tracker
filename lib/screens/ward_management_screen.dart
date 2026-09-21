@@ -94,7 +94,7 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                   message: 'কোনো ওয়ার্ড যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ওয়ার্ড যোগ করুন।',
                 )
               : ListView.builder(
-                  padding: safeBodyPadding(context, amount: 12),
+                  padding: safeBodyPadding(context, amount: 12, fab: canManage),
                   itemCount: _wards.length,
                   itemBuilder: (context, index) {
                     final w = _wards[index];

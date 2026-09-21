@@ -47,14 +47,18 @@ service cloud.firestore {
       allow write: if isSignedIn() && request.auth.uid == uid;
 
       match /memberships/{protisthanId} {
-        // Read: only the user themself. Write: an admin/creator adding or
-        // removing this user, or the user bootstrapping their own creator
-        // row right after creating a brand-new থানা (see isOwner above).
+        // Read: only the user themself. Create/update: an admin/creator
+        // adding or re-roling this user, or the user bootstrapping their
+        // own creator row right after creating a brand-new থানা (see
+        // isOwner above). Delete: also the user themself, always — leaving
+        // a থানা (or deleting your account, see AccountScreen) must be
+        // self-service and never depend on an admin/creator's role.
         allow read: if isSignedIn() && request.auth.uid == uid;
-        allow write: if isSignedIn() && (
+        allow create, update: if isSignedIn() && (
           hasRole(protisthanId, ['creator', 'admin']) ||
           (request.auth.uid == uid && request.resource.data.role == 'creator' && isOwner(protisthanId))
         );
+        allow delete: if isSignedIn() && (request.auth.uid == uid || hasRole(protisthanId, ['creator', 'admin']));
       }
     }
 
@@ -79,8 +83,11 @@ service cloud.firestore {
         // out they're NOT a member yet, before they can become one.
         // This never exposes another user's membership doc.
         allow read: if isMember(protisthanId) || (isSignedIn() && request.auth.uid == memberUid);
-        allow write: if hasRole(protisthanId, ['creator', 'admin']) ||
+        allow create, update: if hasRole(protisthanId, ['creator', 'admin']) ||
           (request.auth.uid == memberUid && request.resource.data.role == 'creator' && isOwner(protisthanId));
+        // Leaving a থানা (or deleting your account) is always self-service,
+        // same as the reverse-index memberships/ delete rule above.
+        allow delete: if hasRole(protisthanId, ['creator', 'admin']) || request.auth.uid == memberUid;
       }
 
       match /wards/{wardId} {

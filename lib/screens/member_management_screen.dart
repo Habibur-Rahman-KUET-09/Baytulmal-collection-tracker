@@ -216,7 +216,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ListView.builder(
-                    padding: safeBodyPadding(context, amount: 12),
+                    padding: safeBodyPadding(context, amount: 12, fab: canAdd),
                     itemCount: _members.length,
                     itemBuilder: (context, index) {
                       final m = _members[index];

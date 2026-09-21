@@ -92,7 +92,7 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                   message: 'কোনো খাত যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি খাত যোগ করুন।',
                 )
               : ListView.builder(
-                  padding: safeBodyPadding(context, amount: 12),
+                  padding: safeBodyPadding(context, amount: 12, fab: canManage),
                   itemCount: _criteria.length,
                   itemBuilder: (context, index) {
                     final c = _criteria[index];
