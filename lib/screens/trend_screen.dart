@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
@@ -80,6 +81,7 @@ class _TrendScreenState extends State<TrendScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final maxPoint = _points.isEmpty
         ? null
         : _points.reduce((a, b) => a.total >= b.total ? a : b);
@@ -88,7 +90,7 @@ class _TrendScreenState extends State<TrendScreen> {
         : (_points.map((p) => p.total).reduce((a, b) => a > b ? a : b)) * 1.2;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ট্রেন্ড দেখুন')),
+      appBar: AppBar(title: Text(s.trendScreenTitle)),
       body: Padding(
         padding: safeBodyPadding(context),
         child: Column(
@@ -98,7 +100,7 @@ class _TrendScreenState extends State<TrendScreen> {
               spacing: 8,
               children: [
                 ChoiceChip(
-                  label: const Text('মোট কালেকশন'),
+                  label: Text(s.totalCollectionChip),
                   selected: _mode == _TrendMode.total,
                   onSelected: (_) {
                     setState(() => _mode = _TrendMode.total);
@@ -170,7 +172,7 @@ class _TrendScreenState extends State<TrendScreen> {
               child: _loading
                   ? const Center(child: CircularProgressIndicator())
                   : _points.isEmpty
-                      ? const Center(child: Text('কোনো তথ্য পাওয়া যায়নি'))
+                      ? Center(child: Text(s.noDataFound))
                       : BarChart(
                           BarChartData(
                             maxY: maxY == 0 ? 100 : maxY,
@@ -235,8 +237,10 @@ class _TrendScreenState extends State<TrendScreen> {
             if (maxPoint != null && maxPoint.total > 0) ...[
               const SizedBox(height: 12),
               Text(
-                'সর্বোচ্চ মাস: ${BanglaMonths.label(maxPoint.month, maxPoint.year)} '
-                '(${CurrencyFormatter.format(maxPoint.total)})',
+                s.trendMaxMonth(
+                  BanglaMonths.label(maxPoint.month, maxPoint.year),
+                  CurrencyFormatter.format(maxPoint.total),
+                ),
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ],

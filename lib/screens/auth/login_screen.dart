@@ -51,6 +51,12 @@ class _LoginScreenState extends State<LoginScreen> {
         return s.loginErrorNetwork;
       case 'too-many-requests':
         return s.loginErrorTooManyRequests;
+      case 'missing-google-id-token':
+        return s.loginErrorMissingGoogleToken;
+      case 'no-current-user':
+        return s.loginErrorNoCurrentUser;
+      case 'missing-password':
+        return s.loginErrorMissingPassword;
       default:
         return e.message ?? s.loginErrorGeneric;
     }

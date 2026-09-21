@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
@@ -88,8 +89,9 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('থানার মাসিক কালেকশন এক নজরে')),
+      appBar: AppBar(title: Text(s.protisthanSummaryTitle)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -117,7 +119,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
-                        const Text('মোট কালেকশন'),
+                        Text(s.totalCollectionLabel),
                       ],
                     ),
                   ),
@@ -128,11 +130,11 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     child: Column(
                       children: [
-                        _statRow('সকল ওয়ার্ডের মোট কালেকশন', _wardTotal),
-                        _statRow('+ থানার আয়', _thanaIncome),
-                        _statRow('উপ-যোগফল', _subtotal, bold: true, divider: true),
-                        _statRow('− থানার ব্যয়', _thanaExpense),
-                        _statRow('চূড়ান্ত মোট কালেকশন', _finalTotal, bold: true, divider: true),
+                        _statRow(s.allWardsTotalLabel, _wardTotal),
+                        _statRow(s.plusThanaIncomeLabel, _thanaIncome),
+                        _statRow(s.subtotalLabel, _subtotal, bold: true, divider: true),
+                        _statRow(s.minusThanaExpenseLabel, _thanaExpense),
+                        _statRow(s.finalTotalLabel, _finalTotal, bold: true, divider: true),
                       ],
                     ),
                   ),
@@ -148,7 +150,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('সকল ওয়ার্ডের মোট ধার্যকৃত নিসাব', style: TextStyle(fontSize: 12.5)),
+                        Text(s.allWardsTargetLabel, style: const TextStyle(fontSize: 12.5)),
                         Text(
                           CurrencyFormatter.format(_targetTotal),
                           style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
@@ -158,7 +160,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
-                const Text('খাত অনুযায়ী', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(s.byCriteriaLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
                 const Divider(),
                 ..._criteriaBreakdown.map(
                   (e) => ListTile(
@@ -168,7 +170,7 @@ class _ProtisthanSummaryScreenState extends State<ProtisthanSummaryScreen> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text('ওয়ার্ড অনুযায়ী', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(s.byWardLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
                 const Divider(),
                 ..._wardBreakdown.map(
                   (e) => ListTile(

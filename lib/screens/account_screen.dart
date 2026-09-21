@@ -34,6 +34,12 @@ class _AccountScreenState extends State<AccountScreen> {
           return s.accountErrorRequiresRecentLogin;
         case 'network-request-failed':
           return s.loginErrorNetwork;
+        case 'missing-google-id-token':
+          return s.loginErrorMissingGoogleToken;
+        case 'no-current-user':
+          return s.loginErrorNoCurrentUser;
+        case 'missing-password':
+          return s.loginErrorMissingPassword;
         default:
           return e.message ?? s.accountErrorGeneric;
       }

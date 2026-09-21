@@ -292,6 +292,24 @@ class Strings {
   String get pdfDownloadButton => _t('PDF ডাউনলোড', 'Download PDF');
   String get excelDownloadButton => _t('Excel ডাউনলোড', 'Download Excel');
 
+  // ---- screens/protisthan_summary_screen.dart ----
+  String get protisthanSummaryTitle => _t('থানার মাসিক কালেকশন এক নজরে', "থানা's monthly collection at a glance");
+  String get totalCollectionLabel => _t('মোট কালেকশন', 'Total collection');
+  String get allWardsTotalLabel => _t('সকল ওয়ার্ডের মোট কালেকশন', "All wards' total collection");
+  String get plusThanaIncomeLabel => _t('+ থানার আয়', "+ থানা's income");
+  String get subtotalLabel => _t('উপ-যোগফল', 'Subtotal');
+  String get minusThanaExpenseLabel => _t('− থানার ব্যয়', "− থানা's expense");
+  String get finalTotalLabel => _t('চূড়ান্ত মোট কালেকশন', 'Final total collection');
+  String get allWardsTargetLabel => _t('সকল ওয়ার্ডের মোট ধার্যকৃত নিসাব', "All wards' total target নিসাব");
+  String get byCriteriaLabel => _t('খাত অনুযায়ী', 'By criteria');
+  String get byWardLabel => _t('ওয়ার্ড অনুযায়ী', 'By ward');
+
+  // ---- screens/trend_screen.dart ----
+  String get trendScreenTitle => _t('ট্রেন্ড দেখুন', 'View trend');
+  String get totalCollectionChip => _t('মোট কালেকশন', 'Total collection');
+  String get noDataFound => _t('কোনো তথ্য পাওয়া যায়নি', 'No data found');
+  String trendMaxMonth(String label, String amount) => _t('সর্বোচ্চ মাস: $label ($amount)', 'Highest month: $label ($amount)');
+
   // ---- widgets/confirm_dialog.dart ----
   String get dialogProtisthanNameLabel => _t('থানার নাম', 'থানা name');
   String get dialogWardNameLabel => _t('ওয়ার্ডের নাম', 'Ward name');
@@ -345,6 +363,10 @@ class Strings {
   String get loginErrorGeneric => _t('একটি সমস্যা হয়েছে, আবার চেষ্টা করুন।', 'Something went wrong — try again.');
   String loginGoogleSignInFailed(String error) =>
       _t('Google সাইন-ইন ব্যর্থ হয়েছে: $error', 'Google sign-in failed: $error');
+  String get loginErrorMissingGoogleToken =>
+      _t('Google থেকে আইডি টোকেন পাওয়া যায়নি।', 'Did not receive an ID token from Google.');
+  String get loginErrorNoCurrentUser => _t('সাইন-ইন করা নেই।', 'Not signed in.');
+  String get loginErrorMissingPassword => _t('পাসওয়ার্ড আবশ্যক।', 'Password is required.');
 
   // ---- Account screen (screens/account_screen.dart) ----
   String get accountTitle => _t('আমার অ্যাকাউন্ট', 'My account');
