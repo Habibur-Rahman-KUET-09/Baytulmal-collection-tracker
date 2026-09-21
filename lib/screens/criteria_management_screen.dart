@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/criteria.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
@@ -41,11 +42,12 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   }
 
   Future<void> _add() async {
+    final s = Strings.of(context);
     final name = await showNameInputDialog(
       context,
-      title: 'নতুন খাত যোগ করুন',
-      label: 'খাতের নাম',
-      hintText: 'যেমনঃ দোকান ভাড়া',
+      title: s.addCriteriaTitle,
+      label: s.criteriaNameLabel,
+      hintText: s.criteriaNameHint,
     );
     if (name != null && name.isNotEmpty && mounted) {
       await context.read<AppDataProvider>().addCriteria(widget.protisthan.id!, name);
@@ -54,10 +56,11 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   }
 
   Future<void> _rename(Criteria c) async {
+    final s = Strings.of(context);
     final name = await showNameInputDialog(
       context,
-      title: 'খাতের নাম সম্পাদনা',
-      label: 'খাতের নাম',
+      title: s.editCriteriaTitle,
+      label: s.criteriaNameLabel,
       initialValue: c.name,
     );
     if (name != null && name.isNotEmpty && mounted) {
@@ -67,10 +70,11 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   }
 
   Future<void> _delete(Criteria c) async {
+    final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
       context,
-      title: 'খাত মুছে ফেলুন?',
-      message: '"${c.name}" মুছে ফেললে সকল ওয়ার্ডের এই খাত সংক্রান্ত এন্ট্রি ডেটাও মুছে যাবে।',
+      title: s.deleteCriteriaTitle,
+      message: s.deleteCriteriaMessage(c.name),
     );
     if (confirmed && mounted) {
       await context.read<AppDataProvider>().deleteCriteria(c.id!);
@@ -80,16 +84,17 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canManage = role?.canManageStructure ?? false;
     return Scaffold(
-      appBar: AppBar(title: Text('খাত (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text(s.criteriaManagementTitle(widget.protisthan.name))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _criteria.isEmpty
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.category_outlined,
-                  message: 'কোনো খাত যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি খাত যোগ করুন।',
+                  message: s.emptyCriteriaMessage,
                 )
               : ListView.builder(
                   padding: safeBodyPadding(context, amount: 12, fab: canManage),
@@ -101,9 +106,9 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                       child: ListTile(
                         title: Text(c.name),
                         subtitle: c.isSpecial
-                            ? const Text(
-                                'বিশেষ খাত — ধার্যকৃত নিসাবের সাথে সম্পর্কিত',
-                                style: TextStyle(fontSize: 11.5),
+                            ? Text(
+                                s.specialCriteriaNote,
+                                style: const TextStyle(fontSize: 11.5),
                               )
                             : null,
                         trailing: !canManage

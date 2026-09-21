@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
@@ -49,15 +50,16 @@ class _ProtisthanDetailScreenState extends State<ProtisthanDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.protisthan.name),
         bottom: TabBar(
           controller: _tabController,
-          tabs: const [
-            Tab(text: 'ওয়ার্ড সমূহ'),
-            Tab(text: 'খাত'),
-            Tab(text: 'রিপোর্ট'),
+          tabs: [
+            Tab(text: s.detailTabWards),
+            Tab(text: s.detailTabCriteria),
+            Tab(text: s.detailTabReport),
           ],
         ),
       ),
@@ -111,7 +113,8 @@ class _WardsTabState extends State<_WardsTab> {
   }
 
   Future<void> _addWard() async {
-    final result = await showWardInputDialog(context, title: 'নতুন ওয়ার্ড যোগ করুন');
+    final s = Strings.of(context);
+    final result = await showWardInputDialog(context, title: s.addWardTitle);
     if (result != null && result.name.isNotEmpty && mounted) {
       await context
           .read<AppDataProvider>()
@@ -121,9 +124,10 @@ class _WardsTabState extends State<_WardsTab> {
   }
 
   Future<void> _editWard(Ward w) async {
+    final s = Strings.of(context);
     final result = await showWardInputDialog(
       context,
-      title: 'ওয়ার্ড সম্পাদনা',
+      title: s.editWardTitle,
       initialName: w.name,
       initialTargetAmount: w.targetAmount,
     );
@@ -138,10 +142,11 @@ class _WardsTabState extends State<_WardsTab> {
   }
 
   Future<void> _deleteWard(Ward w) async {
+    final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
       context,
-      title: 'ওয়ার্ড মুছে ফেলুন?',
-      message: '"${w.name}" মুছে ফেললে এর সকল এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে।',
+      title: s.deleteWardTitle,
+      message: s.deleteWardMessage(w.name),
     );
     if (confirmed && mounted) {
       await context.read<AppDataProvider>().deleteWard(w.id!);
@@ -151,15 +156,16 @@ class _WardsTabState extends State<_WardsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canManage = role?.canManageStructure ?? false;
     return Scaffold(
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _wards.isEmpty
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.storefront_outlined,
-                  message: 'কোনো ওয়ার্ড যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ওয়ার্ড যোগ করুন।',
+                  message: s.emptyWardsMessage,
                 )
               : RefreshIndicator(
                   onRefresh: _load,
@@ -174,8 +180,8 @@ class _WardsTabState extends State<_WardsTab> {
                         child: ListTile(
                           title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
-                            '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? '৳ ০ (খালি)' : CurrencyFormatter.format(total)}'
-                            '${w.targetAmount > 0 ? '  •  ধার্যকৃত নিসাব ${CurrencyFormatter.format(w.targetAmount)}' : ''}',
+                            '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? s.wardEmptyAmount : CurrencyFormatter.format(total)}'
+                            '${w.targetAmount > 0 ? '  •  ${s.nisabPrefix(CurrencyFormatter.format(w.targetAmount))}' : ''}',
                           ),
                           trailing: canManage
                               ? PopupMenuButton<String>(
@@ -190,10 +196,10 @@ class _WardsTabState extends State<_WardsTab> {
                                           .then((_) => _load());
                                     }
                                   },
-                                  itemBuilder: (context) => const [
-                                    PopupMenuItem(value: 'edit', child: Text('সম্পাদনা')),
-                                    PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
-                                    PopupMenuItem(value: 'manage', child: Text('সব ওয়ার্ড ম্যানেজ করুন')),
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(value: 'edit', child: Text(s.edit)),
+                                    PopupMenuItem(value: 'delete', child: Text(s.delete)),
+                                    PopupMenuItem(value: 'manage', child: Text(s.wardMenuManageAll)),
                                   ],
                                 )
                               : null,
@@ -245,6 +251,7 @@ class _CriteriaTabState extends State<_CriteriaTab> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -254,19 +261,19 @@ class _CriteriaTabState extends State<_CriteriaTab> {
             const Icon(Icons.category_outlined, size: 56),
             const SizedBox(height: 12),
             Text(
-              '${BanglaMonths.toBanglaDigits(_count)}টি খাত নির্ধারিত আছে',
+              s.criteriaCountLabel(_count),
               style: Theme.of(context).textTheme.titleMedium,
             ),
             const SizedBox(height: 4),
             Text(
-              'এই থানার সকল ওয়ার্ডের জন্য একই খাত তালিকা ব্যবহৃত হয়।',
+              s.criteriaSameListNote,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
               icon: const Icon(Icons.edit),
-              label: const Text('খাত ম্যানেজ করুন'),
+              label: Text(s.manageCriteriaButton),
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(
                     builder: (_) => CriteriaManagementScreen(protisthan: widget.protisthan),
@@ -286,14 +293,15 @@ class _SummaryTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final now = DateTime.now();
     return ListView(
       padding: safeBodyPadding(context),
       children: [
         _SummaryCard(
           icon: Icons.point_of_sale_outlined,
-          title: 'থানার আয়',
-          subtitle: 'থানার নিজস্ব কালেকশন, খাত অনুযায়ী',
+          title: s.thanaIncomeTitle,
+          subtitle: s.thanaIncomeSubtitle,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(
               builder: (_) => ThanaIncomeScreen(
@@ -306,32 +314,32 @@ class _SummaryTab extends StatelessWidget {
         ),
         _SummaryCard(
           icon: Icons.account_balance_outlined,
-          title: 'থানার বাস্তব জমা খরচ',
-          subtitle: 'সব ওয়ার্ডের বাস্তব জমা ও থানার ব্যয়ের হিসাব',
+          title: s.remittanceCardTitle,
+          subtitle: s.remittanceCardSubtitle,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => RemittanceScreen(protisthan: protisthan)),
           ),
         ),
         _SummaryCard(
           icon: Icons.grid_on,
-          title: 'ম্যাট্রিক্স রিপোর্ট',
-          subtitle: 'ওয়ার্ড × খাত টেবিল — PDF/Excel এক্সপোর্ট করুন',
+          title: s.matrixCardTitle,
+          subtitle: s.matrixCardSubtitle,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => MatrixReportScreen(protisthan: protisthan)),
           ),
         ),
         _SummaryCard(
           icon: Icons.summarize_outlined,
-          title: 'থানার মাসিক কালেকশন এক নজরে',
-          subtitle: 'মোট কালেকশন, খাত ও ওয়ার্ড অনুযায়ী বিভাজন',
+          title: s.summaryCardTitle,
+          subtitle: s.summaryCardSubtitle,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => ProtisthanSummaryScreen(protisthan: protisthan)),
           ),
         ),
         _SummaryCard(
           icon: Icons.show_chart,
-          title: 'ট্রেন্ড / তুলনা',
-          subtitle: 'একাধিক মাসের কালেকশন গ্রাফ আকারে তুলনা করুন',
+          title: s.trendCardTitle,
+          subtitle: s.trendCardSubtitle,
           onTap: () => Navigator.of(context).push(
             MaterialPageRoute(builder: (_) => TrendScreen(protisthan: protisthan)),
           ),

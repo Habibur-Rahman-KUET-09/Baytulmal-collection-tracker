@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
@@ -42,7 +43,8 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
   }
 
   Future<void> _add() async {
-    final result = await showWardInputDialog(context, title: 'নতুন ওয়ার্ড যোগ করুন');
+    final s = Strings.of(context);
+    final result = await showWardInputDialog(context, title: s.addWardTitle);
     if (result != null && result.name.isNotEmpty && mounted) {
       await context
           .read<AppDataProvider>()
@@ -52,9 +54,10 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
   }
 
   Future<void> _edit(Ward w) async {
+    final s = Strings.of(context);
     final result = await showWardInputDialog(
       context,
-      title: 'ওয়ার্ড সম্পাদনা',
+      title: s.editWardTitle,
       initialName: w.name,
       initialTargetAmount: w.targetAmount,
     );
@@ -69,10 +72,11 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
   }
 
   Future<void> _delete(Ward w) async {
+    final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
       context,
-      title: 'ওয়ার্ড মুছে ফেলুন?',
-      message: '"${w.name}" মুছে ফেললে এর সকল এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে।',
+      title: s.deleteWardTitle,
+      message: s.deleteWardMessage(w.name),
     );
     if (confirmed && mounted) {
       await context.read<AppDataProvider>().deleteWard(w.id!);
@@ -82,16 +86,17 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canManage = role?.canManageStructure ?? false;
     return Scaffold(
-      appBar: AppBar(title: Text('ওয়ার্ড সমূহ (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text(s.wardManagementTitle(widget.protisthan.name))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _wards.isEmpty
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.storefront_outlined,
-                  message: 'কোনো ওয়ার্ড যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ওয়ার্ড যোগ করুন।',
+                  message: s.emptyWardsMessage,
                 )
               : ListView.builder(
                   padding: safeBodyPadding(context, amount: 12, fab: canManage),
@@ -103,7 +108,7 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                       child: ListTile(
                         title: Text(w.name),
                         subtitle: w.targetAmount > 0
-                            ? Text('ধার্যকৃত নিসাব: ${CurrencyFormatter.format(w.targetAmount)}')
+                            ? Text(s.wardNisabLine(CurrencyFormatter.format(w.targetAmount)))
                             : null,
                         trailing: canManage
                             ? Row(

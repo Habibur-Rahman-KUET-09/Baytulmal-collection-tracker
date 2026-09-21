@@ -59,6 +59,65 @@ class Strings {
             'and entry data. This cannot be undone.',
       );
 
+  // ---- screens/protisthan_detail_screen.dart ----
+  String get detailTabWards => _t('ওয়ার্ড সমূহ', 'Wards');
+  String get detailTabCriteria => _t('খাত', 'Criteria');
+  String get detailTabReport => _t('রিপোর্ট', 'Report');
+
+  String get addWardTitle => _t('নতুন ওয়ার্ড যোগ করুন', 'Add new ward');
+  String get editWardTitle => _t('ওয়ার্ড সম্পাদনা', 'Edit ward');
+  String get deleteWardTitle => _t('ওয়ার্ড মুছে ফেলুন?', 'Delete ward?');
+  String deleteWardMessage(String name) => _t(
+        '"$name" মুছে ফেললে এর সকল এন্ট্রি ডেটাও স্থায়ীভাবে মুছে যাবে।',
+        'Deleting "$name" will also permanently delete all its entry data.',
+      );
+  String get emptyWardsMessage =>
+      _t('কোনো ওয়ার্ড যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি ওয়ার্ড যোগ করুন।', 'No wards added yet.\nTap the + button below to add one.');
+  String get wardEmptyAmount => _t('৳ ০ (খালি)', '৳ 0 (empty)');
+  String nisabPrefix(String amount) => _t('ধার্যকৃত নিসাব $amount', 'Target নিসাব $amount');
+  String get wardMenuManageAll => _t('সব ওয়ার্ড ম্যানেজ করুন', 'Manage all wards');
+
+  String criteriaCountLabel(int count) {
+    final c = BanglaMonths.toBanglaDigits(count);
+    return _t('$cটি খাত নির্ধারিত আছে', '$c criteria defined');
+  }
+
+  String get criteriaSameListNote =>
+      _t('এই থানার সকল ওয়ার্ডের জন্য একই খাত তালিকা ব্যবহৃত হয়।', 'The same criteria list is used for every ward in this থানা.');
+  String get manageCriteriaButton => _t('খাত ম্যানেজ করুন', 'Manage criteria');
+
+  String get thanaIncomeTitle => _t('থানার আয়', "থানা's income");
+  String get thanaIncomeSubtitle => _t('থানার নিজস্ব কালেকশন, খাত অনুযায়ী', "থানা's own collection, by criteria");
+  String get remittanceCardTitle => _t('থানার বাস্তব জমা খরচ', "থানা's actual deposit & expense");
+  String get remittanceCardSubtitle =>
+      _t('সব ওয়ার্ডের বাস্তব জমা ও থানার ব্যয়ের হিসাব', "All wards' actual deposit and থানা's expense");
+  String get matrixCardTitle => _t('ম্যাট্রিক্স রিপোর্ট', 'Matrix report');
+  String get matrixCardSubtitle => _t('ওয়ার্ড × খাত টেবিল — PDF/Excel এক্সপোর্ট করুন', 'Ward × criteria table — export PDF/Excel');
+  String get summaryCardTitle => _t('থানার মাসিক কালেকশন এক নজরে', "থানা's monthly collection at a glance");
+  String get summaryCardSubtitle => _t('মোট কালেকশন, খাত ও ওয়ার্ড অনুযায়ী বিভাজন', 'Total collection, broken down by criteria and ward');
+  String get trendCardTitle => _t('ট্রেন্ড / তুলনা', 'Trend / compare');
+  String get trendCardSubtitle => _t('একাধিক মাসের কালেকশন গ্রাফ আকারে তুলনা করুন', 'Compare collection across months as a graph');
+
+  // ---- screens/ward_management_screen.dart ----
+  String wardManagementTitle(String protisthanName) => _t('ওয়ার্ড সমূহ ($protisthanName)', 'Wards ($protisthanName)');
+  String wardNisabLine(String amount) => _t('ধার্যকৃত নিসাব: $amount', 'Target নিসাব: $amount');
+
+  // ---- screens/criteria_management_screen.dart ----
+  String criteriaManagementTitle(String protisthanName) => _t('খাত ($protisthanName)', 'Criteria ($protisthanName)');
+  String get addCriteriaTitle => _t('নতুন খাত যোগ করুন', 'Add new criteria');
+  String get criteriaNameLabel => _t('খাতের নাম', 'Criteria name');
+  String get criteriaNameHint => _t('যেমনঃ দোকান ভাড়া', 'e.g. Shop rent');
+  String get editCriteriaTitle => _t('খাতের নাম সম্পাদনা', 'Edit criteria name');
+  String get deleteCriteriaTitle => _t('খাত মুছে ফেলুন?', 'Delete criteria?');
+  String deleteCriteriaMessage(String name) => _t(
+        '"$name" মুছে ফেললে সকল ওয়ার্ডের এই খাত সংক্রান্ত এন্ট্রি ডেটাও মুছে যাবে।',
+        'Deleting "$name" will also delete its entry data across every ward.',
+      );
+  String get emptyCriteriaMessage =>
+      _t('কোনো খাত যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি খাত যোগ করুন।', 'No criteria added yet.\nTap the + button below to add one.');
+  String get specialCriteriaNote =>
+      _t('বিশেষ খাত — ধার্যকৃত নিসাবের সাথে সম্পর্কিত', 'Special criteria — related to the target নিসাব');
+
   // ---- widgets/confirm_dialog.dart ----
   String get dialogProtisthanNameLabel => _t('থানার নাম', 'থানা name');
   String get dialogWardNameLabel => _t('ওয়ার্ডের নাম', 'Ward name');
