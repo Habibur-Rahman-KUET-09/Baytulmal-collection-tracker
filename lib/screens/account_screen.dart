@@ -1,14 +1,17 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../l10n/locale_provider.dart';
+import '../l10n/strings.dart';
 import '../services/auth_service.dart';
 import '../services/cloud_sync_service.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import 'help_screen.dart';
 
-/// আমার অ্যাকাউন্ট — প্রোফাইল তথ্য, পাসওয়ার্ড পরিবর্তন (শুধু ইমেইল/পাসওয়ার্ড
-/// অ্যাকাউন্টের জন্য), অ্যাকাউন্ট মুছে ফেলা, ব্যবহার নির্দেশনা ও লগআউট।
+/// আমার অ্যাকাউন্ট — প্রোফাইল তথ্য, ভাষা, পাসওয়ার্ড পরিবর্তন (শুধু ইমেইল/
+/// পাসওয়ার্ড অ্যাকাউন্টের জন্য), অ্যাকাউন্ট মুছে ফেলা, ব্যবহার নির্দেশনা ও লগআউট।
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
 
@@ -19,27 +22,27 @@ class AccountScreen extends StatefulWidget {
 class _AccountScreenState extends State<AccountScreen> {
   bool _busy = false;
 
-  String _friendlyError(Object e) {
+  String _friendlyError(Strings s, Object e) {
     if (e is FirebaseAuthException) {
       switch (e.code) {
         case 'wrong-password':
         case 'invalid-credential':
-          return 'পাসওয়ার্ড সঠিক নয়।';
+          return s.loginErrorWrongPassword;
         case 'weak-password':
-          return 'নতুন পাসওয়ার্ড খুবই দুর্বল — কমপক্ষে ৮ অক্ষর, একটি সংখ্যা সহ দিন।';
+          return s.accountErrorWeakNewPassword;
         case 'requires-recent-login':
-          return 'নিরাপত্তার জন্য আবার সাইন-ইন করে চেষ্টা করুন।';
+          return s.accountErrorRequiresRecentLogin;
         case 'network-request-failed':
-          return 'ইন্টারনেট সংযোগ পরীক্ষা করুন।';
+          return s.loginErrorNetwork;
         default:
-          return e.message ?? 'একটি সমস্যা হয়েছে।';
+          return e.message ?? s.accountErrorGeneric;
       }
     }
     return e.toString();
   }
 
-  Future<void> _changePassword() async {
-    final result = await _showChangePasswordDialog();
+  Future<void> _changePassword(Strings s) async {
+    final result = await _showChangePasswordDialog(s);
     if (result == null) return;
     setState(() => _busy = true);
     try {
@@ -48,18 +51,16 @@ class _AccountScreenState extends State<AccountScreen> {
         newPassword: result.newPassword,
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('পাসওয়ার্ড পরিবর্তন করা হয়েছে')),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.accountPasswordChanged)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<_ChangePasswordResult?> _showChangePasswordDialog() {
+  Future<_ChangePasswordResult?> _showChangePasswordDialog(Strings s) {
     final currentCtrl = TextEditingController();
     final newCtrl = TextEditingController();
     final confirmCtrl = TextEditingController();
@@ -67,7 +68,7 @@ class _AccountScreenState extends State<AccountScreen> {
     return showDialog<_ChangePasswordResult>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('পাসওয়ার্ড পরিবর্তন'),
+        title: Text(s.accountChangePasswordDialogTitle),
         content: Form(
           key: formKey,
           child: Column(
@@ -76,18 +77,18 @@ class _AccountScreenState extends State<AccountScreen> {
               TextFormField(
                 controller: currentCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'বর্তমান পাসওয়ার্ড'),
-                validator: (v) => (v == null || v.isEmpty) ? 'আবশ্যক' : null,
+                decoration: InputDecoration(labelText: s.accountCurrentPassword),
+                validator: (v) => (v == null || v.isEmpty) ? s.required : null,
               ),
               const SizedBox(height: 8),
               TextFormField(
                 controller: newCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'নতুন পাসওয়ার্ড'),
+                decoration: InputDecoration(labelText: s.accountNewPassword),
                 validator: (v) {
-                  if (v == null || v.isEmpty) return 'আবশ্যক';
-                  if (v.length < 8) return 'কমপক্ষে ৮ অক্ষর দিন';
-                  if (!RegExp(r'[0-9]').hasMatch(v)) return 'অন্তত একটি সংখ্যা দিন';
+                  if (v == null || v.isEmpty) return s.required;
+                  if (v.length < 8) return s.loginPasswordTooShort;
+                  if (!RegExp(r'[0-9]').hasMatch(v)) return s.loginPasswordNeedsDigit;
                   return null;
                 },
               ),
@@ -95,14 +96,14 @@ class _AccountScreenState extends State<AccountScreen> {
               TextFormField(
                 controller: confirmCtrl,
                 obscureText: true,
-                decoration: const InputDecoration(labelText: 'নতুন পাসওয়ার্ড নিশ্চিত করুন'),
-                validator: (v) => v != newCtrl.text ? 'পাসওয়ার্ড মিলছে না' : null,
+                decoration: InputDecoration(labelText: s.accountConfirmNewPassword),
+                validator: (v) => v != newCtrl.text ? s.loginPasswordMismatch : null,
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('বাতিল')),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(s.cancel)),
           FilledButton(
             onPressed: () {
               if (!formKey.currentState!.validate()) return;
@@ -110,21 +111,21 @@ class _AccountScreenState extends State<AccountScreen> {
                 _ChangePasswordResult(currentCtrl.text, newCtrl.text),
               );
             },
-            child: const Text('পরিবর্তন করুন'),
+            child: Text(s.accountChangeButton),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _deleteAccount() async {
+  Future<void> _deleteAccount(Strings s) async {
     setState(() => _busy = true);
     List<String> creatorOf;
     try {
       creatorOf = await CloudSyncService.instance.myCreatorProtisthanNames();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
       }
       setState(() => _busy = false);
       return;
@@ -136,13 +137,10 @@ class _AccountScreenState extends State<AccountScreen> {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('অ্যাকাউন্ট মুছে ফেলা যাবে না'),
-          content: Text(
-            'আপনি নিচের থানাগুলোর নির্মাতা — এগুলো আগে মুছে ফেলুন বা অন্য থানায় '
-            'সরিয়ে নিন, তারপর অ্যাকাউন্ট মুছুন:\n\n${creatorOf.map((n) => '• $n').join('\n')}',
-          ),
+          title: Text(s.accountCannotDeleteTitle),
+          content: Text(s.accountCannotDeleteMessage(creatorOf.map((n) => '• $n').join('\n'))),
           actions: [
-            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('ঠিক আছে')),
+            TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(s.ok)),
           ],
         ),
       );
@@ -151,16 +149,16 @@ class _AccountScreenState extends State<AccountScreen> {
 
     final confirmed = await showConfirmDialog(
       context,
-      title: 'অ্যাকাউন্ট মুছে ফেলবেন?',
-      message: 'আপনার প্রোফাইল, লগইন এবং সকল থানার সদস্যপদ স্থায়ীভাবে মুছে যাবে। '
-          'এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
-      confirmLabel: 'মুছে ফেলুন',
+      title: s.accountDeleteConfirmTitle,
+      message: s.accountDeleteConfirmMessage,
+      confirmLabel: s.delete,
+      cancelLabel: s.cancel,
     );
     if (!confirmed || !mounted) return;
 
     String? currentPassword;
     if (AuthService.instance.isPasswordUser) {
-      currentPassword = await _showPasswordPromptDialog();
+      currentPassword = await _showPasswordPromptDialog(s);
       if (currentPassword == null || !mounted) return;
     }
 
@@ -172,40 +170,41 @@ class _AccountScreenState extends State<AccountScreen> {
       // back to LoginScreen automatically — no manual navigation needed.
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  Future<String?> _showPasswordPromptDialog() {
+  Future<String?> _showPasswordPromptDialog(Strings s) {
     final ctrl = TextEditingController();
     return showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('পাসওয়ার্ড নিশ্চিত করুন'),
+        title: Text(s.accountConfirmPasswordTitle),
         content: TextField(
           controller: ctrl,
           obscureText: true,
-          decoration: const InputDecoration(labelText: 'বর্তমান পাসওয়ার্ড'),
+          decoration: InputDecoration(labelText: s.accountCurrentPassword),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: const Text('বাতিল')),
+          TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(s.cancel)),
           FilledButton(
             onPressed: () => Navigator.of(dialogContext).pop(ctrl.text),
-            child: const Text('নিশ্চিত করুন'),
+            child: Text(s.accountConfirmButton),
           ),
         ],
       ),
     );
   }
 
-  Future<void> _signOut() async {
+  Future<void> _signOut(Strings s) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'লগআউট করবেন?',
-      message: 'আপনাকে আবার লগইন করতে হবে।',
-      confirmLabel: 'লগআউট',
+      title: s.accountLogoutTitle,
+      message: s.accountLogoutMessage,
+      confirmLabel: s.accountLogout,
+      cancelLabel: s.cancel,
       isDestructive: false,
     );
     if (confirmed) {
@@ -215,11 +214,13 @@ class _AccountScreenState extends State<AccountScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
+    final localeProvider = context.watch<LocaleProvider>();
     final user = AuthService.instance.currentUser;
     final isPasswordUser = AuthService.instance.isPasswordUser;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('আমার অ্যাকাউন্ট')),
+      appBar: AppBar(title: Text(s.accountTitle)),
       body: AbsorbPointer(
         absorbing: _busy,
         child: ListView(
@@ -236,19 +237,33 @@ class _AccountScreenState extends State<AccountScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.language_outlined),
+                title: Text(s.accountLanguage),
+                trailing: SegmentedButton<AppLanguage>(
+                  segments: [
+                    ButtonSegment(value: AppLanguage.bn, label: Text(s.accountLanguageBangla)),
+                    ButtonSegment(value: AppLanguage.en, label: Text(s.accountLanguageEnglish)),
+                  ],
+                  selected: {localeProvider.language},
+                  onSelectionChanged: (selected) => localeProvider.setLanguage(selected.first),
+                ),
+              ),
+            ),
             if (isPasswordUser)
               Card(
                 child: ListTile(
                   leading: const Icon(Icons.lock_outline),
-                  title: const Text('পাসওয়ার্ড পরিবর্তন'),
+                  title: Text(s.accountChangePassword),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: _busy ? null : _changePassword,
+                  onTap: _busy ? null : () => _changePassword(s),
                 ),
               ),
             Card(
               child: ListTile(
                 leading: const Icon(Icons.help_outline),
-                title: const Text('কীভাবে কাজ করে'),
+                title: Text(s.accountHowItWorks),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const HowItWorksScreen()),
@@ -258,7 +273,7 @@ class _AccountScreenState extends State<AccountScreen> {
             Card(
               child: ListTile(
                 leading: const Icon(Icons.menu_book_outlined),
-                title: const Text('বিস্তারিত নিয়মকানুন (SOP)'),
+                title: Text(s.accountSop),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const SopScreen()),
@@ -268,10 +283,10 @@ class _AccountScreenState extends State<AccountScreen> {
             Card(
               child: ListTile(
                 leading: Icon(Icons.person_remove_outlined, color: Theme.of(context).colorScheme.error),
-                title: Text('অ্যাকাউন্ট মুছে ফেলুন', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-                subtitle: const Text('আপনার প্রোফাইল ও লগইন স্থায়ীভাবে মুছে যাবে'),
+                title: Text(s.accountDeleteAccount, style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                subtitle: Text(s.accountDeleteSubtitle),
                 trailing: const Icon(Icons.chevron_right),
-                onTap: _busy ? null : _deleteAccount,
+                onTap: _busy ? null : () => _deleteAccount(s),
               ),
             ),
             const SizedBox(height: 16),
@@ -280,9 +295,9 @@ class _AccountScreenState extends State<AccountScreen> {
                 backgroundColor: Theme.of(context).colorScheme.errorContainer,
                 foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
               ),
-              onPressed: _busy ? null : _signOut,
+              onPressed: _busy ? null : () => _signOut(s),
               icon: const Icon(Icons.logout),
-              label: const Text('লগআউট'),
+              label: Text(s.accountLogout),
             ),
             if (_busy) ...[
               const SizedBox(height: 24),

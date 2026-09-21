@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../l10n/strings.dart';
 import '../../services/auth_service.dart';
 import '../../utils/safe_padding.dart';
 
@@ -31,31 +32,31 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  String _friendlyError(FirebaseAuthException e) {
+  String _friendlyError(Strings s, FirebaseAuthException e) {
     switch (e.code) {
       case 'invalid-email':
-        return 'ইমেইল ঠিকানাটি সঠিক নয়।';
+        return s.loginErrorInvalidEmail;
       case 'user-disabled':
-        return 'এই অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে।';
+        return s.loginErrorUserDisabled;
       case 'user-not-found':
       case 'invalid-credential':
-        return 'এই ইমেইল/পাসওয়ার্ডে কোনো অ্যাকাউন্ট পাওয়া যায়নি।';
+        return s.loginErrorUserNotFound;
       case 'wrong-password':
-        return 'পাসওয়ার্ড সঠিক নয়।';
+        return s.loginErrorWrongPassword;
       case 'email-already-in-use':
-        return 'এই ইমেইল দিয়ে আগে থেকেই একটি অ্যাকাউন্ট আছে।';
+        return s.loginErrorEmailInUse;
       case 'weak-password':
-        return 'পাসওয়ার্ড খুবই দুর্বল — কমপক্ষে ৬ অক্ষর দিন।';
+        return s.loginErrorWeakPassword;
       case 'network-request-failed':
-        return 'ইন্টারনেট সংযোগ পরীক্ষা করুন।';
+        return s.loginErrorNetwork;
       case 'too-many-requests':
-        return 'অনেকবার চেষ্টা করা হয়েছে — একটু পর আবার চেষ্টা করুন।';
+        return s.loginErrorTooManyRequests;
       default:
-        return e.message ?? 'একটি সমস্যা হয়েছে, আবার চেষ্টা করুন।';
+        return e.message ?? s.loginErrorGeneric;
     }
   }
 
-  Future<void> _submit() async {
+  Future<void> _submit(Strings s) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _submitting = true);
     final email = _emailController.text.trim();
@@ -70,72 +71,69 @@ class _LoginScreenState extends State<LoginScreen> {
       // manual navigation needed here.
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  Future<void> _signInWithGoogle() async {
+  Future<void> _signInWithGoogle(Strings s) async {
     setState(() => _submitting = true);
     try {
       await AuthService.instance.signInWithGoogle();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Google সাইন-ইন ব্যর্থ হয়েছে: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.loginGoogleSignInFailed('$e'))));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
   }
 
-  Future<void> _forgotPassword() async {
+  Future<void> _forgotPassword(Strings s) async {
     final email = _emailController.text.trim();
     if (email.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('আগে ইমেইল ঠিকানা লিখুন')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.loginEnterEmailFirst)));
       return;
     }
     try {
       await AuthService.instance.sendPasswordResetEmail(email);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$email-এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে')),
+        SnackBar(content: Text(s.loginResetLinkSent(email))),
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(e))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
     }
   }
 
-  String? _validateEmail(String? value) {
-    if (value == null || value.trim().isEmpty) return 'ইমেইল আবশ্যক';
-    if (!value.contains('@') || !value.contains('.')) return 'সঠিক ইমেইল দিন';
+  String? _validateEmail(Strings s, String? value) {
+    if (value == null || value.trim().isEmpty) return s.loginEmailRequired;
+    if (!value.contains('@') || !value.contains('.')) return s.loginEmailInvalid;
     return null;
   }
 
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) return 'পাসওয়ার্ড আবশ্যক';
+  String? _validatePassword(Strings s, String? value) {
+    if (value == null || value.isEmpty) return s.loginPasswordRequired;
     if (_isSignUp) {
-      if (value.length < 8) return 'কমপক্ষে ৮ অক্ষর দিন';
-      if (!RegExp(r'[0-9]').hasMatch(value)) return 'অন্তত একটি সংখ্যা দিন';
+      if (value.length < 8) return s.loginPasswordTooShort;
+      if (!RegExp(r'[0-9]').hasMatch(value)) return s.loginPasswordNeedsDigit;
     }
     return null;
   }
 
-  String? _validateConfirm(String? value) {
+  String? _validateConfirm(Strings s, String? value) {
     if (!_isSignUp) return null;
-    if (value != _passwordController.text) return 'পাসওয়ার্ড মিলছে না';
+    if (value != _passwordController.text) return s.loginPasswordMismatch;
     return null;
   }
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -152,13 +150,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     const Icon(Icons.account_balance, size: 56),
                     const SizedBox(height: 12),
                     Text(
-                      'বাইতুলমাল কালেকশন ট্র্যাকার',
+                      s.appTitle,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      _isSignUp ? 'নতুন অ্যাকাউন্ট তৈরি করুন' : 'লগইন করুন',
+                      _isSignUp ? s.loginSignUpTitle : s.loginSignInTitle,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),
@@ -167,11 +165,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      decoration: const InputDecoration(
-                        labelText: 'ইমেইল',
-                        prefixIcon: Icon(Icons.email_outlined),
+                      decoration: InputDecoration(
+                        labelText: s.loginEmail,
+                        prefixIcon: const Icon(Icons.email_outlined),
                       ),
-                      validator: _validateEmail,
+                      validator: (v) => _validateEmail(s, v),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
@@ -180,7 +178,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       textInputAction:
                           _isSignUp ? TextInputAction.next : TextInputAction.done,
                       decoration: InputDecoration(
-                        labelText: 'পাসওয়ার্ড',
+                        labelText: s.loginPassword,
                         prefixIcon: const Icon(Icons.lock_outline),
                         suffixIcon: IconButton(
                           icon: Icon(
@@ -189,9 +187,9 @@ class _LoginScreenState extends State<LoginScreen> {
                           onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                         ),
                       ),
-                      validator: _validatePassword,
+                      validator: (v) => _validatePassword(s, v),
                       onFieldSubmitted: (_) {
-                        if (!_isSignUp) _submit();
+                        if (!_isSignUp) _submit(s);
                       },
                     ),
                     if (_isSignUp) ...[
@@ -200,60 +198,56 @@ class _LoginScreenState extends State<LoginScreen> {
                         controller: _confirmController,
                         obscureText: _obscurePassword,
                         textInputAction: TextInputAction.done,
-                        decoration: const InputDecoration(
-                          labelText: 'পাসওয়ার্ড নিশ্চিত করুন',
-                          prefixIcon: Icon(Icons.lock_outline),
+                        decoration: InputDecoration(
+                          labelText: s.loginConfirmPassword,
+                          prefixIcon: const Icon(Icons.lock_outline),
                         ),
-                        validator: _validateConfirm,
-                        onFieldSubmitted: (_) => _submit(),
+                        validator: (v) => _validateConfirm(s, v),
+                        onFieldSubmitted: (_) => _submit(s),
                       ),
                     ],
                     if (!_isSignUp)
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
-                          onPressed: _submitting ? null : _forgotPassword,
-                          child: const Text('পাসওয়ার্ড ভুলে গেছেন?'),
+                          onPressed: _submitting ? null : () => _forgotPassword(s),
+                          child: Text(s.loginForgotPassword),
                         ),
                       ),
                     const SizedBox(height: 12),
                     FilledButton(
-                      onPressed: _submitting ? null : _submit,
+                      onPressed: _submitting ? null : () => _submit(s),
                       child: _submitting
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
-                          : Text(_isSignUp ? 'নিবন্ধন করুন' : 'লগইন'),
+                          : Text(_isSignUp ? s.loginSignUpButton : s.loginSignInButton),
                     ),
                     const SizedBox(height: 8),
                     TextButton(
                       onPressed: _submitting
                           ? null
                           : () => setState(() => _isSignUp = !_isSignUp),
-                      child: Text(
-                        _isSignUp
-                            ? 'আগে থেকেই অ্যাকাউন্ট আছে? লগইন করুন'
-                            : 'নতুন এখানে? অ্যাকাউন্ট তৈরি করুন',
-                      ),
+                      child: Text(_isSignUp ? s.loginHaveAccount : s.loginNewHere),
                     ),
                     const SizedBox(height: 16),
-                    const Row(
+                    Row(
                       children: [
-                        Expanded(child: Divider()),
+                        const Expanded(child: Divider()),
                         Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 8),
-                          child: Text('অথবা'),
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(s.loginOr),
                         ),
-                        Expanded(child: Divider()),
+                        const Expanded(child: Divider()),
                       ],
                     ),
                     const SizedBox(height: 16),
                     OutlinedButton.icon(
-                      onPressed: _submitting ? null : _signInWithGoogle,
+                      onPressed: _submitting ? null : () => _signInWithGoogle(s),
                       icon: const Icon(Icons.login),
-                      label: const Text('Google দিয়ে চালিয়ে যান'),
+                      label: Text(s.loginWithGoogle),
                     ),
                   ],
                 ),

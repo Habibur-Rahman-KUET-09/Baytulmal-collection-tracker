@@ -1,0 +1,289 @@
+import 'package:flutter/widgets.dart';
+import 'package:provider/provider.dart';
+
+import 'locale_provider.dart';
+
+/// Every user-facing string in the app, in Bangla and English. Screens read
+/// via `Strings.of(context)` (rebuilds on language change through
+/// [LocaleProvider]) and pick a getter per piece of text — no ARB/codegen,
+/// just a plain class, so adding a string is "add a getter here".
+class Strings {
+  final AppLanguage lang;
+  const Strings(this.lang);
+
+  static Strings of(BuildContext context) {
+    final language = context.watch<LocaleProvider>().language;
+    return Strings(language);
+  }
+
+  bool get _bn => lang == AppLanguage.bn;
+  String _t(String bn, String en) => _bn ? bn : en;
+
+  // ---- Common / shared ----
+  String get appTitle => _t('বাইতুলমাল কালেকশন ট্র্যাকার', 'Baytulmal Collection Tracker');
+  String get cancel => _t('বাতিল', 'Cancel');
+  String get save => _t('সংরক্ষণ করুন', 'Save');
+  String get delete => _t('মুছে ফেলুন', 'Delete');
+  String get edit => _t('সম্পাদনা', 'Edit');
+  String get name => _t('নাম', 'Name');
+  String get ok => _t('ঠিক আছে', 'OK');
+  String get confirm => _t('নিশ্চিত করুন', 'Confirm');
+  String get required => _t('আবশ্যক', 'Required');
+  String get optional => _t('ঐচ্ছিক', 'Optional');
+  String get enterValidNumber => _t('সঠিক সংখ্যা দিন', 'Enter a valid number');
+  String get negativeNotAllowed => _t('ঋণাত্মক মান গ্রহণযোগ্য নয়', 'Negative values are not allowed');
+  String get retry => _t('আবার চেষ্টা করুন', 'Retry');
+  String get loading => _t('লোড হচ্ছে...', 'Loading...');
+
+  // ---- App shell / auth gate ----
+  String get authGateLoading => _t('লোড হচ্ছে...', 'Loading...');
+
+  // ---- Login / sign up (auth/login_screen.dart) ----
+  String get loginSignUpTitle => _t('নতুন অ্যাকাউন্ট তৈরি করুন', 'Create a new account');
+  String get loginSignInTitle => _t('লগইন করুন', 'Sign in');
+  String get loginEmail => _t('ইমেইল', 'Email');
+  String get loginPassword => _t('পাসওয়ার্ড', 'Password');
+  String get loginConfirmPassword => _t('পাসওয়ার্ড নিশ্চিত করুন', 'Confirm password');
+  String get loginForgotPassword => _t('পাসওয়ার্ড ভুলে গেছেন?', 'Forgot password?');
+  String get loginSignUpButton => _t('নিবন্ধন করুন', 'Sign up');
+  String get loginSignInButton => _t('লগইন', 'Sign in');
+  String get loginHaveAccount => _t('আগে থেকেই অ্যাকাউন্ট আছে? লগইন করুন', 'Already have an account? Sign in');
+  String get loginNewHere => _t('নতুন এখানে? অ্যাকাউন্ট তৈরি করুন', 'New here? Create an account');
+  String get loginOr => _t('অথবা', 'or');
+  String get loginWithGoogle => _t('Google দিয়ে চালিয়ে যান', 'Continue with Google');
+  String get loginEmailRequired => _t('ইমেইল আবশ্যক', 'Email is required');
+  String get loginEmailInvalid => _t('সঠিক ইমেইল দিন', 'Enter a valid email');
+  String get loginPasswordRequired => _t('পাসওয়ার্ড আবশ্যক', 'Password is required');
+  String get loginPasswordTooShort => _t('কমপক্ষে ৮ অক্ষর দিন', 'Enter at least 8 characters');
+  String get loginPasswordNeedsDigit => _t('অন্তত একটি সংখ্যা দিন', 'Include at least one digit');
+  String get loginPasswordMismatch => _t('পাসওয়ার্ড মিলছে না', 'Passwords do not match');
+  String get loginEnterEmailFirst => _t('আগে ইমেইল ঠিকানা লিখুন', 'Enter your email address first');
+  String loginResetLinkSent(String email) =>
+      _t('$email-এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে', 'Password reset link sent to $email');
+  String get loginErrorInvalidEmail => _t('ইমেইল ঠিকানাটি সঠিক নয়।', 'That email address is invalid.');
+  String get loginErrorUserDisabled => _t('এই অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে।', 'This account has been disabled.');
+  String get loginErrorUserNotFound =>
+      _t('এই ইমেইল/পাসওয়ার্ডে কোনো অ্যাকাউন্ট পাওয়া যায়নি।', 'No account found with this email/password.');
+  String get loginErrorWrongPassword => _t('পাসওয়ার্ড সঠিক নয়।', 'Incorrect password.');
+  String get loginErrorEmailInUse =>
+      _t('এই ইমেইল দিয়ে আগে থেকেই একটি অ্যাকাউন্ট আছে।', 'An account already exists with this email.');
+  String get loginErrorWeakPassword =>
+      _t('পাসওয়ার্ড খুবই দুর্বল — কমপক্ষে ৬ অক্ষর দিন।', 'Password is too weak — use at least 6 characters.');
+  String get loginErrorNetwork => _t('ইন্টারনেট সংযোগ পরীক্ষা করুন।', 'Check your internet connection.');
+  String get loginErrorTooManyRequests =>
+      _t('অনেকবার চেষ্টা করা হয়েছে — একটু পর আবার চেষ্টা করুন।', 'Too many attempts — try again shortly.');
+  String get loginErrorGeneric => _t('একটি সমস্যা হয়েছে, আবার চেষ্টা করুন।', 'Something went wrong — try again.');
+  String loginGoogleSignInFailed(String error) =>
+      _t('Google সাইন-ইন ব্যর্থ হয়েছে: $error', 'Google sign-in failed: $error');
+
+  // ---- Account screen (screens/account_screen.dart) ----
+  String get accountTitle => _t('আমার অ্যাকাউন্ট', 'My account');
+  String get accountChangePassword => _t('পাসওয়ার্ড পরিবর্তন', 'Change password');
+  String get accountHowItWorks => _t('কীভাবে কাজ করে', 'How it works');
+  String get accountSop => _t('বিস্তারিত নিয়মকানুন (SOP)', 'Detailed guidelines (SOP)');
+  String get accountDeleteAccount => _t('অ্যাকাউন্ট মুছে ফেলুন', 'Delete account');
+  String get accountDeleteSubtitle =>
+      _t('আপনার প্রোফাইল ও লগইন স্থায়ীভাবে মুছে যাবে', 'Your profile and login will be permanently deleted');
+  String get accountLogout => _t('লগআউট', 'Log out');
+  String get accountLanguage => _t('ভাষা', 'Language');
+  String get accountLanguageBangla => _t('বাংলা', 'Bangla');
+  String get accountLanguageEnglish => _t('English', 'English');
+
+  String get accountChangePasswordDialogTitle => _t('পাসওয়ার্ড পরিবর্তন', 'Change password');
+  String get accountCurrentPassword => _t('বর্তমান পাসওয়ার্ড', 'Current password');
+  String get accountNewPassword => _t('নতুন পাসওয়ার্ড', 'New password');
+  String get accountConfirmNewPassword => _t('নতুন পাসওয়ার্ড নিশ্চিত করুন', 'Confirm new password');
+  String get accountChangeButton => _t('পরিবর্তন করুন', 'Change');
+  String get accountPasswordChanged => _t('পাসওয়ার্ড পরিবর্তন করা হয়েছে', 'Password changed');
+
+  String get accountLogoutTitle => _t('লগআউট করবেন?', 'Log out?');
+  String get accountLogoutMessage => _t('আপনাকে আবার লগইন করতে হবে।', "You'll need to sign in again.");
+
+  String get accountCannotDeleteTitle => _t('অ্যাকাউন্ট মুছে ফেলা যাবে না', 'Cannot delete account');
+  String accountCannotDeleteMessage(String list) => _t(
+        'আপনি নিচের থানাগুলোর নির্মাতা — এগুলো আগে মুছে ফেলুন বা অন্য থানায় '
+            'সরিয়ে নিন, তারপর অ্যাকাউন্ট মুছুন:\n\n$list',
+        "You're the creator of the থানা below — delete them or transfer "
+            'ownership first, then delete your account:\n\n$list',
+      );
+
+  String get accountConfirmPasswordTitle => _t('পাসওয়ার্ড নিশ্চিত করুন', 'Confirm password');
+  String get accountConfirmButton => _t('নিশ্চিত করুন', 'Confirm');
+
+  String get accountDeleteConfirmTitle => _t('অ্যাকাউন্ট মুছে ফেলবেন?', 'Delete your account?');
+  String get accountDeleteConfirmMessage => _t(
+        'আপনার প্রোফাইল, লগইন এবং সকল থানার সদস্যপদ স্থায়ীভাবে মুছে যাবে। '
+            'এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
+        'Your profile, login, and membership in every থানা will be permanently '
+            'deleted. This cannot be undone.',
+      );
+
+  String get accountErrorWeakNewPassword => _t(
+        'নতুন পাসওয়ার্ড খুবই দুর্বল — কমপক্ষে ৮ অক্ষর, একটি সংখ্যা সহ দিন।',
+        'New password is too weak — use at least 8 characters including a digit.',
+      );
+  String get accountErrorRequiresRecentLogin =>
+      _t('নিরাপত্তার জন্য আবার সাইন-ইন করে চেষ্টা করুন।', 'For security, sign in again and retry.');
+  String get accountErrorGeneric => _t('একটি সমস্যা হয়েছে।', 'Something went wrong.');
+
+  // ---- Help / SOP static content (screens/help_screen.dart) ----
+  String get howItWorksTitle => _t('কীভাবে কাজ করে', 'How it works');
+  String get sopTitle => _t('বিস্তারিত নিয়মকানুন (SOP)', 'Detailed guidelines (SOP)');
+
+  List<(String, String)> get howItWorksSections => [
+        (
+          _t('গঠন', 'Structure'),
+          _t(
+            'থানা → ওয়ার্ড → খাত → মাসিক এন্ট্রি। প্রতিটি থানার নিজস্ব '
+                'ওয়ার্ড ও খাত তালিকা থাকে, আর প্রতি ওয়ার্ডে প্রতি মাসে প্রতিটি '
+                'খাতের জন্য একটি করে টাকার অংক এন্ট্রি করা হয়।',
+            'থানা (organisation) → Ward → Criteria → monthly entry. Each থানা '
+                'has its own list of wards and criteria, and every ward gets '
+                'one amount entered per criteria, per month.',
+          ),
+        ),
+        (
+          _t('বিশেষ খাত', 'Special criteria'),
+          _t(
+            'প্রতিটি ওয়ার্ডে চারটি বিশেষ খাত স্বয়ংক্রিয়ভাবে থাকে — '
+                'ধার্যকৃত নিসাব (ওয়ার্ড তৈরির সময় ফিক্সড), আয়, ব্যয় (মাসিক '
+                'এন্ট্রি), এবং বাস্তব জমা (সবসময় আয় − ব্যয়, স্বয়ংক্রিয়ভাবে '
+                'হিসাব হয়)।',
+            'Every ward automatically has four special criteria — ধার্যকৃত '
+                'নিসাব/target (fixed when the ward is created), income, '
+                'expense (monthly entries), and actual deposit (always '
+                'income − expense, calculated automatically).',
+          ),
+        ),
+        (
+          _t('থানার আয়', "থানা's own income"),
+          _t(
+            'থানার নিজস্ব সরাসরি কালেকশন — একটি হিডেন "থানা" ওয়ার্ডের '
+                'মাধ্যমে ট্র্যাক করা হয়, রিপোর্টে আলাদা রো হিসেবে দেখা যায়।',
+            "The থানা's own direct collection — tracked through a hidden "
+                '"থানা" ward, shown as its own row in reports.',
+          ),
+        ),
+        (
+          _t('রোল সিস্টেম', 'Role system'),
+          _t(
+            '৪টি রোল — সদস্য (শুধু দেখতে পারবে), কালেক্টর (এন্ট্রি দিতে '
+                'পারবে), অ্যাডমিন (ওয়ার্ড/খাত ম্যানেজ ও ইউজার যোগ করতে পারবে), '
+                'নির্মাতা (থানা মুছে ফেলা সহ সব কিছু করতে পারবে)। "সদস্য '
+                'ব্যবস্থাপনা" থেকে রোল দেওয়া/পরিবর্তন করা যায়।',
+            '4 roles — member (view only), collector (can enter data), '
+                'admin (can manage wards/criteria and add users), creator '
+                '(can do everything, including deleting the থানা). Roles '
+                'are assigned/changed from "Member management".',
+          ),
+        ),
+        (
+          _t('রিপোর্ট', 'Reports'),
+          _t(
+            'ম্যাট্রিক্স রিপোর্ট (ওয়ার্ড × খাত টেবিল, PDF/Excel এক্সপোর্ট), '
+                'মাসিক কালেকশন সারাংশ, এবং একাধিক মাসের ট্রেন্ড গ্রাফ — সবই '
+                'থানার রিপোর্ট ট্যাব থেকে পাওয়া যায়।',
+            'Matrix report (ward × criteria table, PDF/Excel export), '
+                'monthly collection summary, and a multi-month trend graph '
+                "— all from the থানা's Report tab.",
+          ),
+        ),
+        (
+          _t('ক্লাউড সিঙ্ক', 'Cloud sync'),
+          _t(
+            'সব ডেটা Firestore-এ সংরক্ষিত হয় — একাধিক ডিভাইস বা '
+                'ব্যবহারকারীর মধ্যে স্বয়ংক্রিয়ভাবে সিঙ্ক হয়। ইন্টারনেট না '
+                'থাকলেও অ্যাপ ব্যবহার করা যায়, সংযোগ ফিরলে এন্ট্রি নিজে থেকেই '
+                'ক্লাউডে পাঠানো হয়।',
+            'All data is stored in Firestore — synced automatically across '
+                'devices and users. The app still works offline; entries are '
+                'sent to the cloud automatically once the connection returns.',
+          ),
+        ),
+      ];
+
+  List<(String, String)> get sopSections => [
+        (
+          _t('১. থানা তৈরি ও সদস্য যোগ', '1. Create a থানা and add members'),
+          _t(
+            'হোম স্ক্রিনের + বোতাম দিয়ে থানা তৈরি করুন — আপনি স্বয়ংক্রিয়ভাবে '
+                'এর নির্মাতা হবেন। "সদস্য ব্যবস্থাপনা" থেকে অন্যদের ইমেইল দিয়ে যোগ '
+                'করুন ও উপযুক্ত রোল দিন — যাকে যোগ করবেন তাকে আগে একবার অ্যাপে '
+                'সাইন-ইন করতে হবে।',
+            "Create a থানা with the home screen's + button — you become its "
+                'creator automatically. Add others by email from "Member '
+                'management" and give them the right role — anyone you add '
+                'must have signed in to the app at least once already.',
+          ),
+        ),
+        (
+          _t('২. ওয়ার্ড ও খাত সেটআপ', '2. Set up wards and criteria'),
+          _t(
+            'অ্যাডমিন/নির্মাতা "ওয়ার্ড সমূহ" ট্যাব থেকে ওয়ার্ড যোগ করুন, '
+                'প্রতিটির ধার্যকৃত নিসাব নির্ধারণ করুন। "খাত" থেকে অতিরিক্ত খাত '
+                'যোগ করুন — বিশেষ চারটি খাত স্বয়ংক্রিয়ভাবে থাকে, মোছা যায় না।',
+            'Admin/creator: add wards from the "Wards" tab, and set each '
+                'one\'s target amount. Add extra criteria from "Criteria" — '
+                'the four special ones already exist automatically and '
+                "can't be deleted.",
+          ),
+        ),
+        (
+          _t('৩. মাসিক এন্ট্রি', '3. Monthly entries'),
+          _t(
+            'কালেক্টর/অ্যাডমিন/নির্মাতা প্রতি মাসে প্রতিটি ওয়ার্ডে গিয়ে আয়/ব্যয় '
+                'ও অন্যান্য খাতের অংক এন্ট্রি করবেন। একই মাসে আবার এন্ট্রি দিলে আগেরটা '
+                'প্রতিস্থাপিত হয়ে যায়। খালি রাখলে সেই এন্ট্রি মুছে যায়।',
+            'Collector/admin/creator: enter income/expense and other '
+                'criteria amounts for each ward every month. Re-entering the '
+                'same month overwrites the previous value; leaving it blank '
+                'deletes that entry.',
+          ),
+        ),
+        (
+          _t('৪. থানার আয় ও রেমিট্যান্স', "4. থানা's income and remittance"),
+          _t(
+            '"থানার আয়" থেকে থানার নিজস্ব সংগ্রহ এন্ট্রি করুন। "থানার বাস্তব '
+                'জমা খরচ" থেকে মাসিক ব্যয় লিখে থানার প্রকৃত নিসাব হিসাব করুন।',
+            'Enter the থানা\'s own direct collection from "থানার আয়". Enter '
+                'monthly expense from "থানার বাস্তব জমা খরচ" to calculate the '
+                "থানা's actual remaining নিসাব.",
+          ),
+        ),
+        (
+          _t('৫. রিপোর্ট পর্যালোচনা', '5. Review reports'),
+          _t(
+            'প্রতি মাস শেষে ম্যাট্রিক্স রিপোর্ট দেখে সব ওয়ার্ডের এন্ট্রি ঠিক আছে '
+                'কিনা যাচাই করুন, প্রয়োজনে PDF/Excel এক্সপোর্ট করে সংরক্ষণ করুন।',
+            "At month end, check the matrix report to verify every ward's "
+                'entries are correct, and export to PDF/Excel to keep a '
+                'record if needed.',
+          ),
+        ),
+        (
+          _t('৬. ব্যাকআপ', '6. Backup'),
+          _t(
+            'নিয়মিত "ডেটা ব্যবস্থাপনা" থেকে JSON ব্যাকআপ এক্সপোর্ট করে নিরাপদ '
+                'জায়গায় রাখুন। মনে রাখবেন, ক্লাউড সিঙ্ক থাকলেও local ব্যাকআপ একটি '
+                'অতিরিক্ত নিরাপত্তা স্তর — ফাইলটি সংবেদনশীল আর্থিক তথ্য ধারণ করে, তাই '
+                'শুধু বিশ্বস্ত জায়গায় শেয়ার/সংরক্ষণ করুন।',
+            'Export a JSON backup regularly from "Data management" and keep '
+                'it somewhere safe. Even with cloud sync, a local backup is '
+                'an extra layer of safety — the file holds sensitive '
+                'financial data, so only share/store it somewhere trusted.',
+          ),
+        ),
+        (
+          _t('৭. নিরাপত্তা', '7. Security'),
+          _t(
+            'শক্তিশালী পাসওয়ার্ড ব্যবহার করুন, কাউকে আপনার লগইন তথ্য শেয়ার করবেন '
+                'না, প্রয়োজনের বেশি কাউকে অ্যাডমিন/নির্মাতা রোল দেবেন না, এবং কোনো '
+                'সদস্য থানা ছেড়ে গেলে তাকে সদস্য ব্যবস্থাপনা থেকে সরিয়ে দিন।',
+            'Use a strong password, never share your login with anyone, '
+                "don't give out admin/creator roles more than necessary, "
+                'and remove a member from "Member management" once they '
+                'leave the থানা.',
+          ),
+        ),
+      ];
+}
