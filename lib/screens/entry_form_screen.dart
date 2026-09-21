@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/criteria.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
@@ -104,7 +105,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     await _load();
   }
 
-  Future<void> _save() async {
+  Future<void> _save(Strings s) async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     final appData = context.read<AppDataProvider>();
@@ -124,7 +125,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('এন্ট্রি সংরক্ষণ করা হয়েছে')),
+        SnackBar(content: Text(s.entrySaved)),
       );
       Navigator.of(context).pop();
     } finally {
@@ -132,7 +133,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     }
   }
 
-  Widget _criteriaField(Criteria c, {required bool canEnter}) {
+  Widget _criteriaField(Criteria c, {required bool canEnter, required Strings s}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -141,16 +142,16 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         decoration: InputDecoration(
-          labelText: '${c.name} (৳)',
-          hintText: 'খালি',
+          labelText: s.amountFieldLabel(c.name),
+          hintText: s.amountFieldHint,
           border: const OutlineInputBorder(),
         ),
         onChanged: c.isSpecial ? (_) => setState(() {}) : null,
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
           final parsed = double.tryParse(v.trim());
-          if (parsed == null) return 'সঠিক সংখ্যা দিন';
-          if (parsed < 0) return 'ঋণাত্মক মান গ্রহণযোগ্য নয়';
+          if (parsed == null) return s.enterValidNumber;
+          if (parsed < 0) return s.negativeNotAllowed;
           return null;
         },
       ),
@@ -159,6 +160,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canEnter = role?.canEnterData ?? false;
     final editableSpecialCriteria = _criteriaList.where((c) => c.isSpecial && !c.hasNoEntry).toList();
@@ -181,10 +183,10 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.ward.name} — এন্ট্রি'),
+        title: Text(s.entryFormTitle(widget.ward.name)),
         actions: [
           IconButton(
-            tooltip: 'ওয়ার্ড সামারি দেখুন',
+            tooltip: s.wardSummaryTooltip,
             icon: const Icon(Icons.summarize_outlined),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -206,7 +208,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
               child: ListView(
                 padding: safeBodyPadding(context),
                 children: [
-                  const Text('মাস নির্বাচন করুন', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(s.selectMonth, style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   MonthPickerField(month: _month, year: _year, onChanged: _onMonthChanged),
                   if (editableSpecialCriteria.isNotEmpty) ...[
@@ -223,18 +225,18 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                         children: [
                           Row(
                             children: [
-                              const Expanded(
-                                child: Text('আয় ও ব্যয়', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Expanded(
+                                child: Text(s.incomeExpenseTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
                               ),
                               if (hasTarget)
                                 Text(
-                                  'ধার্যকৃত নিসাব: ${CurrencyFormatter.format(targetAmount)}',
+                                  s.nisabLine(CurrencyFormatter.format(targetAmount)),
                                   style: TextStyle(color: Colors.grey.shade700, fontSize: 12.5),
                                 ),
                             ],
                           ),
                           const SizedBox(height: 10),
-                          ...editableSpecialCriteria.map((c) => _criteriaField(c, canEnter: canEnter)),
+                          ...editableSpecialCriteria.map((c) => _criteriaField(c, canEnter: canEnter, s: s)),
                           if (anySpecialFilled)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -258,12 +260,13 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                                   Expanded(
                                     child: Text(
                                       !hasTarget
-                                          ? 'বাস্তব জমা (আয় − ব্যয়) = ${CurrencyFormatter.format(actualDeposit)}'
+                                          ? s.actualDepositNoTarget(CurrencyFormatter.format(actualDeposit))
                                           : matched
-                                              ? 'বাস্তব জমা (আয় − ব্যয়) = ${CurrencyFormatter.format(actualDeposit)} '
-                                                  '— ধার্যকৃত নিসাবের সাথে মিলেছে'
-                                              : 'বাস্তব জমা (আয় − ব্যয়) = ${CurrencyFormatter.format(actualDeposit)} '
-                                                  '— ধার্যকৃত নিসাব ${CurrencyFormatter.format(targetAmount)}',
+                                              ? s.actualDepositMatched(CurrencyFormatter.format(actualDeposit))
+                                              : s.actualDepositMismatch(
+                                                  CurrencyFormatter.format(actualDeposit),
+                                                  CurrencyFormatter.format(targetAmount),
+                                                ),
                                       style: const TextStyle(fontSize: 12.5),
                                     ),
                                   ),
@@ -275,26 +278,26 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  const Text('অন্যান্য খাত (সবগুলো ঐচ্ছিক)', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(s.otherCriteriaTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   if (normalCriteria.isEmpty)
-                    const EmptyState(
+                    EmptyState(
                       icon: Icons.category_outlined,
-                      message: 'এই থানার জন্য অতিরিক্ত কোনো খাত নেই।',
+                      message: s.noExtraCriteriaMessage,
                     )
                   else
-                    ...normalCriteria.map((c) => _criteriaField(c, canEnter: canEnter)),
+                    ...normalCriteria.map((c) => _criteriaField(c, canEnter: canEnter, s: s)),
                   const SizedBox(height: 12),
                   if (canEnter)
                     FilledButton(
-                      onPressed: (_criteriaList.isEmpty || _saving) ? null : _save,
+                      onPressed: (_criteriaList.isEmpty || _saving) ? null : () => _save(s),
                       child: _saving
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('সংরক্ষণ করুন'),
+                          : Text(s.save),
                     ),
                 ],
               ),

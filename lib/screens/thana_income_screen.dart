@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/criteria.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
@@ -114,7 +115,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     await _load();
   }
 
-  Future<void> _save() async {
+  Future<void> _save(Strings s) async {
     if (!_formKey.currentState!.validate()) return;
     final thanaWard = _thanaWard;
     if (thanaWard == null) return;
@@ -136,7 +137,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('এন্ট্রি সংরক্ষণ করা হয়েছে')),
+        SnackBar(content: Text(s.entrySaved)),
       );
       Navigator.of(context).pop();
     } finally {
@@ -144,7 +145,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     }
   }
 
-  Widget _criteriaField(Criteria c, {ValueChanged<String>? onChanged, required bool canEnter}) {
+  Widget _criteriaField(Criteria c, {ValueChanged<String>? onChanged, required bool canEnter, required Strings s}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -153,16 +154,16 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         decoration: InputDecoration(
-          labelText: '${c.name} (৳)',
-          hintText: 'খালি',
+          labelText: s.amountFieldLabel(c.name),
+          hintText: s.amountFieldHint,
           border: const OutlineInputBorder(),
         ),
         onChanged: onChanged,
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
           final parsed = double.tryParse(v.trim());
-          if (parsed == null) return 'সঠিক সংখ্যা দিন';
-          if (parsed < 0) return 'ঋণাত্মক মান গ্রহণযোগ্য নয়';
+          if (parsed == null) return s.enterValidNumber;
+          if (parsed < 0) return s.negativeNotAllowed;
           return null;
         },
       ),
@@ -171,6 +172,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canEnter = role?.canEnterData ?? false;
     final incomeCriteria = _incomeCriteria;
@@ -181,7 +183,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     final incomeFilled = incomeText.isNotEmpty;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('থানার আয়')),
+      appBar: AppBar(title: Text(s.thanaIncomeTitle)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : Form(
@@ -189,7 +191,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
               child: ListView(
                 padding: safeBodyPadding(context),
                 children: [
-                  const Text('মাস নির্বাচন করুন', style: TextStyle(fontWeight: FontWeight.bold)),
+                  Text(s.selectMonth, style: const TextStyle(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
                   MonthPickerField(month: _month, year: _year, onChanged: _onMonthChanged),
                   if (incomeCriteria != null) ...[
@@ -206,18 +208,18 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                         children: [
                           Row(
                             children: [
-                              const Expanded(
-                                child: Text('আয়', style: TextStyle(fontWeight: FontWeight.bold)),
+                              Expanded(
+                                child: Text(s.incomeLabel, style: const TextStyle(fontWeight: FontWeight.bold)),
                               ),
                               if (hasTarget)
                                 Text(
-                                  'ধার্যকৃত নিসাব: ${CurrencyFormatter.format(_thanaTargetAmount)}',
+                                  s.nisabLine(CurrencyFormatter.format(_thanaTargetAmount)),
                                   style: TextStyle(color: Colors.grey.shade700, fontSize: 12.5),
                                 ),
                             ],
                           ),
                           const SizedBox(height: 10),
-                          _criteriaField(incomeCriteria, onChanged: (_) => setState(() {}), canEnter: canEnter),
+                          _criteriaField(incomeCriteria, onChanged: (_) => setState(() {}), canEnter: canEnter, s: s),
                           if (incomeFilled)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -241,12 +243,13 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                                   Expanded(
                                     child: Text(
                                       !hasTarget
-                                          ? 'বাস্তব জমা (আয়) = ${CurrencyFormatter.format(income)}'
+                                          ? s.actualDepositIncomeOnlyNoTarget(CurrencyFormatter.format(income))
                                           : matched
-                                              ? 'বাস্তব জমা (আয়) = ${CurrencyFormatter.format(income)} '
-                                                  '— ধার্যকৃত নিসাবের সাথে মিলেছে'
-                                              : 'বাস্তব জমা (আয়) = ${CurrencyFormatter.format(income)} '
-                                                  '— ধার্যকৃত নিসাব ${CurrencyFormatter.format(_thanaTargetAmount)}',
+                                              ? s.actualDepositIncomeOnlyMatched(CurrencyFormatter.format(income))
+                                              : s.actualDepositIncomeOnlyMismatch(
+                                                  CurrencyFormatter.format(income),
+                                                  CurrencyFormatter.format(_thanaTargetAmount),
+                                                ),
                                       style: const TextStyle(fontSize: 12.5),
                                     ),
                                   ),
@@ -258,29 +261,29 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                     ),
                   ],
                   const SizedBox(height: 20),
-                  const Text(
-                    'খাত অনুযায়ী থানার আয় (সবগুলো ঐচ্ছিক)',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                  Text(
+                    s.criteriaByThanaTitle,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   if (_normalCriteria.isEmpty)
-                    const EmptyState(
+                    EmptyState(
                       icon: Icons.category_outlined,
-                      message: 'এই থানার জন্য কোনো খাত নেই।',
+                      message: s.noThanaCriteriaMessage,
                     )
                   else
-                    ..._normalCriteria.map((c) => _criteriaField(c, canEnter: canEnter)),
+                    ..._normalCriteria.map((c) => _criteriaField(c, canEnter: canEnter, s: s)),
                   const SizedBox(height: 12),
                   if (canEnter)
                     FilledButton(
-                      onPressed: _saving ? null : _save,
+                      onPressed: _saving ? null : () => _save(s),
                       child: _saving
                           ? const SizedBox(
                               width: 20,
                               height: 20,
                               child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                             )
-                          : const Text('সংরক্ষণ করুন'),
+                          : Text(s.save),
                     ),
                 ],
               ),

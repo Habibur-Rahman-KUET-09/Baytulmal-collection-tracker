@@ -222,6 +222,43 @@ class Strings {
         'A row in the backup file\'s "$table" table references a non-existent "$field".',
       );
 
+  // ---- screens/entry_form_screen.dart ----
+  String entryFormTitle(String wardName) => _t('$wardName — এন্ট্রি', '$wardName — Entry');
+  String get wardSummaryTooltip => _t('ওয়ার্ড সামারি দেখুন', 'View ward summary');
+  String get entrySaved => _t('এন্ট্রি সংরক্ষণ করা হয়েছে', 'Entry saved');
+  String get amountFieldHint => _t('খালি', 'Empty');
+  String amountFieldLabel(String criteriaName) => _t('$criteriaName (৳)', '$criteriaName (৳)');
+  String get selectMonth => _t('মাস নির্বাচন করুন', 'Select month');
+  String get incomeExpenseTitle => _t('আয় ও ব্যয়', 'Income & expense');
+  String nisabLine(String amount) => _t('ধার্যকৃত নিসাব: $amount', 'Target নিসাব: $amount');
+  String actualDepositNoTarget(String amount) =>
+      _t('বাস্তব জমা (আয় − ব্যয়) = $amount', 'Actual deposit (income − expense) = $amount');
+  String actualDepositMatched(String amount) => _t(
+        'বাস্তব জমা (আয় − ব্যয়) = $amount — ধার্যকৃত নিসাবের সাথে মিলেছে',
+        'Actual deposit (income − expense) = $amount — matches the target নিসাব',
+      );
+  String actualDepositMismatch(String amount, String target) => _t(
+        'বাস্তব জমা (আয় − ব্যয়) = $amount — ধার্যকৃত নিসাব $target',
+        'Actual deposit (income − expense) = $amount — target নিসাব $target',
+      );
+  String get otherCriteriaTitle => _t('অন্যান্য খাত (সবগুলো ঐচ্ছিক)', 'Other criteria (all optional)');
+  String get noExtraCriteriaMessage => _t('এই থানার জন্য অতিরিক্ত কোনো খাত নেই।', 'No extra criteria for this থানা.');
+
+  // ---- screens/thana_income_screen.dart ----
+  String get incomeLabel => _t('আয়', 'Income');
+  String actualDepositIncomeOnlyNoTarget(String amount) =>
+      _t('বাস্তব জমা (আয়) = $amount', 'Actual deposit (income) = $amount');
+  String actualDepositIncomeOnlyMatched(String amount) => _t(
+        'বাস্তব জমা (আয়) = $amount — ধার্যকৃত নিসাবের সাথে মিলেছে',
+        'Actual deposit (income) = $amount — matches the target নিসাব',
+      );
+  String actualDepositIncomeOnlyMismatch(String amount, String target) => _t(
+        'বাস্তব জমা (আয়) = $amount — ধার্যকৃত নিসাব $target',
+        'Actual deposit (income) = $amount — target নিসাব $target',
+      );
+  String get criteriaByThanaTitle => _t('খাত অনুযায়ী থানার আয় (সবগুলো ঐচ্ছিক)', "থানা's income by criteria (all optional)");
+  String get noThanaCriteriaMessage => _t('এই থানার জন্য কোনো খাত নেই।', 'No criteria for this থানা.');
+
   // ---- widgets/confirm_dialog.dart ----
   String get dialogProtisthanNameLabel => _t('থানার নাম', 'থানা name');
   String get dialogWardNameLabel => _t('ওয়ার্ডের নাম', 'Ward name');
