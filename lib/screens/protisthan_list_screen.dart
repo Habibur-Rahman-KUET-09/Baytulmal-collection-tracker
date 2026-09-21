@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../services/auth_service.dart';
@@ -116,6 +117,9 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                       final p = provider.protisthanList[index];
                       final wardCount = provider.wardCounts[p.id] ?? 0;
                       final criteriaCount = provider.criteriaCounts[p.id] ?? 0;
+                      final role = provider.roleFor(p);
+                      final canEdit = role?.canManageStructure ?? false;
+                      final canDelete = role?.canDeleteProtisthan ?? false;
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
@@ -123,16 +127,20 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                           subtitle: Text(
                             '${BanglaMonths.toBanglaDigits(wardCount)}টি ওয়ার্ড · ${BanglaMonths.toBanglaDigits(criteriaCount)}টি খাত',
                           ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'edit') _editProtisthan(context, p);
-                              if (value == 'delete') _deleteProtisthan(context, p);
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'edit', child: Text('নাম সম্পাদনা')),
-                              PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
-                            ],
-                          ),
+                          trailing: (canEdit || canDelete)
+                              ? PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'edit') _editProtisthan(context, p);
+                                    if (value == 'delete') _deleteProtisthan(context, p);
+                                  },
+                                  itemBuilder: (context) => [
+                                    if (canEdit)
+                                      const PopupMenuItem(value: 'edit', child: Text('নাম সম্পাদনা')),
+                                    if (canDelete)
+                                      const PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
+                                  ],
+                                )
+                              : null,
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute(builder: (_) => ProtisthanDetailScreen(protisthan: p)),
                           ),

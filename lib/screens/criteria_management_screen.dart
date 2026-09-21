@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
 import '../models/criteria.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/safe_padding.dart';
@@ -79,6 +80,8 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canManage = role?.canManageStructure ?? false;
     return Scaffold(
       appBar: AppBar(title: Text('খাত (${widget.protisthan.name})')),
       body: _loading
@@ -103,25 +106,29 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                                 style: TextStyle(fontSize: 11.5),
                               )
                             : null,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _rename(c),
-                            ),
-                            if (!c.isSpecial)
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline),
-                                onPressed: () => _delete(c),
+                        trailing: !canManage
+                            ? null
+                            : Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined),
+                                    onPressed: () => _rename(c),
+                                  ),
+                                  if (!c.isSpecial)
+                                    IconButton(
+                                      icon: const Icon(Icons.delete_outline),
+                                      onPressed: () => _delete(c),
+                                    ),
+                                ],
                               ),
-                          ],
-                        ),
                       ),
                     );
                   },
                 ),
-      floatingActionButton: FloatingActionButton(onPressed: _add, child: const Icon(Icons.add)),
+      floatingActionButton: canManage
+          ? FloatingActionButton(onPressed: _add, child: const Icon(Icons.add))
+          : null,
     );
   }
 }

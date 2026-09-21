@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
 import '../models/criteria.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
@@ -131,11 +132,12 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     }
   }
 
-  Widget _criteriaField(Criteria c) {
+  Widget _criteriaField(Criteria c, {required bool canEnter}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: _controllers[c.id!],
+        enabled: canEnter,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         decoration: InputDecoration(
@@ -157,6 +159,8 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canEnter = role?.canEnterData ?? false;
     final editableSpecialCriteria = _criteriaList.where((c) => c.isSpecial && !c.hasNoEntry).toList();
     final normalCriteria = _criteriaList.where((c) => !c.isSpecial).toList();
     final targetAmount = widget.ward.targetAmount;
@@ -230,7 +234,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          ...editableSpecialCriteria.map(_criteriaField),
+                          ...editableSpecialCriteria.map((c) => _criteriaField(c, canEnter: canEnter)),
                           if (anySpecialFilled)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -279,18 +283,19 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
                       message: 'এই থানার জন্য অতিরিক্ত কোনো খাত নেই।',
                     )
                   else
-                    ...normalCriteria.map(_criteriaField),
+                    ...normalCriteria.map((c) => _criteriaField(c, canEnter: canEnter)),
                   const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: (_criteriaList.isEmpty || _saving) ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('সংরক্ষণ করুন'),
-                  ),
+                  if (canEnter)
+                    FilledButton(
+                      onPressed: (_criteriaList.isEmpty || _saving) ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('সংরক্ষণ করুন'),
+                    ),
                 ],
               ),
             ),

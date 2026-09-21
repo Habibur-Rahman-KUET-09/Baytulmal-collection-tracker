@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
 import '../models/criteria.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
@@ -143,11 +144,12 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     }
   }
 
-  Widget _criteriaField(Criteria c, {ValueChanged<String>? onChanged}) {
+  Widget _criteriaField(Criteria c, {ValueChanged<String>? onChanged, required bool canEnter}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
         controller: _controllers[c.id!],
+        enabled: canEnter,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
         inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
         decoration: InputDecoration(
@@ -169,6 +171,8 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canEnter = role?.canEnterData ?? false;
     final incomeCriteria = _incomeCriteria;
     final incomeText = incomeCriteria == null ? '' : (_controllers[incomeCriteria.id!]?.text.trim() ?? '');
     final income = double.tryParse(incomeText) ?? 0;
@@ -213,7 +217,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                             ],
                           ),
                           const SizedBox(height: 10),
-                          _criteriaField(incomeCriteria, onChanged: (_) => setState(() {})),
+                          _criteriaField(incomeCriteria, onChanged: (_) => setState(() {}), canEnter: canEnter),
                           if (incomeFilled)
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -265,18 +269,19 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
                       message: 'এই থানার জন্য কোনো খাত নেই।',
                     )
                   else
-                    ..._normalCriteria.map((c) => _criteriaField(c)),
+                    ..._normalCriteria.map((c) => _criteriaField(c, canEnter: canEnter)),
                   const SizedBox(height: 12),
-                  FilledButton(
-                    onPressed: _saving ? null : _save,
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('সংরক্ষণ করুন'),
-                  ),
+                  if (canEnter)
+                    FilledButton(
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Text('সংরক্ষণ করুন'),
+                    ),
                 ],
               ),
             ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
@@ -151,6 +152,8 @@ class _WardsTabState extends State<_WardsTab> {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canManage = role?.canManageStructure ?? false;
     return Scaffold(
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -175,24 +178,26 @@ class _WardsTabState extends State<_WardsTab> {
                             '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? '৳ ০ (খালি)' : CurrencyFormatter.format(total)}'
                             '${w.targetAmount > 0 ? '  •  ধার্যকৃত নিসাব ${CurrencyFormatter.format(w.targetAmount)}' : ''}',
                           ),
-                          trailing: PopupMenuButton<String>(
-                            onSelected: (value) {
-                              if (value == 'edit') _editWard(w);
-                              if (value == 'delete') _deleteWard(w);
-                              if (value == 'manage') {
-                                Navigator.of(context)
-                                    .push(MaterialPageRoute(
-                                      builder: (_) => WardManagementScreen(protisthan: widget.protisthan),
-                                    ))
-                                    .then((_) => _load());
-                              }
-                            },
-                            itemBuilder: (context) => const [
-                              PopupMenuItem(value: 'edit', child: Text('সম্পাদনা')),
-                              PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
-                              PopupMenuItem(value: 'manage', child: Text('সব ওয়ার্ড ম্যানেজ করুন')),
-                            ],
-                          ),
+                          trailing: canManage
+                              ? PopupMenuButton<String>(
+                                  onSelected: (value) {
+                                    if (value == 'edit') _editWard(w);
+                                    if (value == 'delete') _deleteWard(w);
+                                    if (value == 'manage') {
+                                      Navigator.of(context)
+                                          .push(MaterialPageRoute(
+                                            builder: (_) => WardManagementScreen(protisthan: widget.protisthan),
+                                          ))
+                                          .then((_) => _load());
+                                    }
+                                  },
+                                  itemBuilder: (context) => const [
+                                    PopupMenuItem(value: 'edit', child: Text('সম্পাদনা')),
+                                    PopupMenuItem(value: 'delete', child: Text('মুছে ফেলুন')),
+                                    PopupMenuItem(value: 'manage', child: Text('সব ওয়ার্ড ম্যানেজ করুন')),
+                                  ],
+                                )
+                              : null,
                           onTap: () => Navigator.of(context)
                               .push(MaterialPageRoute(
                                 builder: (_) => EntryFormScreen(
@@ -208,7 +213,9 @@ class _WardsTabState extends State<_WardsTab> {
                     },
                   ),
                 ),
-      floatingActionButton: FloatingActionButton(onPressed: _addWard, child: const Icon(Icons.add)),
+      floatingActionButton: canManage
+          ? FloatingActionButton(onPressed: _addWard, child: const Icon(Icons.add))
+          : null,
     );
   }
 }

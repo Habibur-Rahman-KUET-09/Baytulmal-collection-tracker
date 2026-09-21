@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
@@ -91,6 +92,8 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canEnter = role?.canEnterData ?? false;
     final expense = double.tryParse(_expenseCtrl.text.trim()) ?? 0;
     final thanaNisab = _actualDepositTotal - expense;
 
@@ -120,6 +123,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 const SizedBox(height: 14),
                 TextField(
                   controller: _expenseCtrl,
+                  enabled: canEnter,
                   decoration: const InputDecoration(
                     labelText: '২. থানার ব্যয় (৳)',
                     helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে',
@@ -138,11 +142,12 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                   bold: true,
                 ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  onPressed: _saving ? null : _save,
-                  icon: const Icon(Icons.save_outlined),
-                  label: const Text('সংরক্ষণ করুন'),
-                ),
+                if (canEnter)
+                  FilledButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('সংরক্ষণ করুন'),
+                  ),
               ],
             ),
     );

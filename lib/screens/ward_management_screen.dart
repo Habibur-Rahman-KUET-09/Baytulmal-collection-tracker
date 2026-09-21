@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
@@ -81,6 +82,8 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canManage = role?.canManageStructure ?? false;
     return Scaffold(
       appBar: AppBar(title: Text('ওয়ার্ড সমূহ (${widget.protisthan.name})')),
       body: _loading
@@ -102,24 +105,28 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                         subtitle: w.targetAmount > 0
                             ? Text('ধার্যকৃত নিসাব: ${CurrencyFormatter.format(w.targetAmount)}')
                             : null,
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit_outlined),
-                              onPressed: () => _edit(w),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _delete(w),
-                            ),
-                          ],
-                        ),
+                        trailing: canManage
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined),
+                                    onPressed: () => _edit(w),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => _delete(w),
+                                  ),
+                                ],
+                              )
+                            : null,
                       ),
                     );
                   },
                 ),
-      floatingActionButton: FloatingActionButton(onPressed: _add, child: const Icon(Icons.add)),
+      floatingActionButton: canManage
+          ? FloatingActionButton(onPressed: _add, child: const Icon(Icons.add))
+          : null,
     );
   }
 }
