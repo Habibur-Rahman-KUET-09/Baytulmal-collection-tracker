@@ -3,22 +3,19 @@
     <uses-permission android:name="android.permission.INTERNET" />
 
     <!--
-      OWASP Mobile M9/M2 hardening:
-      - allowBackup=false + fullBackupContent=false: stops `adb backup`
-        and Android's auto cloud backup from extracting this app's local
-        SQLite cache (Firestore-mirrored financial/collection records)
-        onto another device without going through Firebase Auth at all.
-      - usesCleartextTraffic=false: the app only talks to Firebase, which
-        is TLS-only anyway, but this blocks any accidental/future plain
-        HTTP request outright instead of relying on that always holding.
+      OWASP Mobile M2 hardening: usesCleartextTraffic=false — the app only
+      talks to Firebase, which is TLS-only anyway, but this blocks any
+      accidental/future plain HTTP request outright instead of relying on
+      that always holding.
+
+      (allowBackup is intentionally left at its default — local
+      adb/cloud device backup of this app's data stays allowed.)
     -->
 
     <application
         android:label="বাইতুলমাল কালেকশন ট্র্যাকার"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:allowBackup="false"
-        android:fullBackupContent="false"
         android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
