@@ -3,6 +3,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:uuid/uuid.dart';
 
 import '../models/criteria.dart';
+import '../models/entry.dart';
 import '../models/protisthan.dart';
 import '../models/remittance.dart';
 import '../models/ward.dart';
@@ -424,6 +425,13 @@ class DatabaseHelper {
     return db.delete('criteria', where: 'id = ?', whereArgs: [id]);
   }
 
+  Future<Criteria?> getCriteriaById(int id) async {
+    final db = await database;
+    final rows = await db.query('criteria', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return null;
+    return Criteria.fromMap(rows.first);
+  }
+
   /// Special criteria always sort first, in their defined order, regardless
   /// of when they were created — migration-seeded special criteria on a
   /// pre-existing Protisthan would otherwise land after that Protisthan's
@@ -502,8 +510,11 @@ class DatabaseHelper {
 
   /// Saves (inserts or overwrites) a single entry amount. Passing `null` or
   /// a blank amount for an already-existing entry deletes it, since every
-  /// criteria field is optional (FR-4.3).
-  Future<void> saveEntry({
+  /// criteria field is optional (FR-4.3). Returns which entry `uuid` was
+  /// affected (and whether it was a delete), so a caller syncing to
+  /// Firestore (see CloudSyncService) knows which cloud doc to touch —
+  /// `null` means nothing existed and nothing was deleted (a no-op).
+  Future<EntrySaveResult?> saveEntry({
     required int wardId,
     required int criteriaId,
     required int month,
@@ -520,19 +531,23 @@ class DatabaseHelper {
 
     if (amount == null) {
       if (existing.isNotEmpty) {
+        final uuid = existing.first['uuid'] as String;
         await db.delete('entry', where: 'id = ?', whereArgs: [existing.first['id']]);
+        return EntrySaveResult(uuid: uuid, deleted: true);
       }
-      return;
+      return null;
     }
 
     final now = DateTime.now().toIso8601String();
     if (existing.isNotEmpty) {
+      final uuid = existing.first['uuid'] as String;
       await db.update(
         'entry',
         {'amount': amount, 'updated_at': now},
         where: 'id = ?',
         whereArgs: [existing.first['id']],
       );
+      return EntrySaveResult(uuid: uuid, deleted: false);
     } else {
       await db.insert('entry', {
         'uuid': uuidFactory,
@@ -543,6 +558,7 @@ class DatabaseHelper {
         'amount': amount,
         'updated_at': now,
       });
+      return EntrySaveResult(uuid: uuidFactory, deleted: false);
     }
   }
 
@@ -945,6 +961,74 @@ class DatabaseHelper {
     }
   }
 
+  /// All entries for a single ward, across every month/year — used when
+  /// claiming pre-Firebase local data for cloud upload (see
+  /// [AppDataProvider._claimUnclaimedLocalProtisthans]).
+  Future<List<Entry>> getEntriesRawForWard(int wardId) async {
+    final db = await database;
+    final rows = await db.query('entry', where: 'ward_id = ?', whereArgs: [wardId]);
+    return rows.map(Entry.fromMap).toList();
+  }
+
+  Future<List<Remittance>> getRemittancesForProtisthan(int protisthanId) async {
+    final db = await database;
+    final rows = await db.query('remittance', where: 'protisthan_id = ?', whereArgs: [protisthanId]);
+    return rows.map(Remittance.fromMap).toList();
+  }
+
+  // ---------------------------------------------------------------------
+  // Cloud sync merge helpers (used by CloudSyncService) — every table has a
+  // `uuid` column (FR-7.3) so a row pulled from Firestore can be matched to
+  // its local copy without knowing the local autoincrement id, and the
+  // Firestore doc id (= this uuid) is stable across devices while the local
+  // int id isn't.
+  // ---------------------------------------------------------------------
+
+  Future<int?> getLocalIdByUuid(String table, String uuid) async {
+    final db = await database;
+    final rows = await db.query(table, columns: ['id'], where: 'uuid = ?', whereArgs: [uuid]);
+    if (rows.isEmpty) return null;
+    return rows.first['id'] as int;
+  }
+
+  /// Inserts a row (matching one table's `toMap()` shape, minus `id`) if no
+  /// local row with this `uuid` exists yet, otherwise updates it in place —
+  /// preserving the existing local `id` so any local foreign keys pointing
+  /// at it stay valid.
+  Future<void> upsertRawByUuid(String table, Map<String, dynamic> row) async {
+    final db = await database;
+    final uuid = row['uuid'] as String;
+    final data = Map<String, dynamic>.from(row)..remove('id');
+    final existingId = await getLocalIdByUuid(table, uuid);
+    if (existingId == null) {
+      await db.insert(table, data);
+    } else {
+      await db.update(table, data, where: 'id = ?', whereArgs: [existingId]);
+    }
+  }
+
+  /// Deletes local rows under `parentColumn = parentId` whose `uuid` is not
+  /// in `keepUuids` — used to propagate a remote delete down to this device.
+  Future<void> pruneNotInUuids(
+    String table,
+    String parentColumn,
+    int parentId,
+    Set<String> keepUuids,
+  ) async {
+    final db = await database;
+    final rows = await db.query(
+      table,
+      columns: ['id', 'uuid'],
+      where: '$parentColumn = ?',
+      whereArgs: [parentId],
+    );
+    for (final r in rows) {
+      if (!keepUuids.contains(r['uuid'] as String)) {
+        await db.delete(table, where: 'id = ?', whereArgs: [r['id']]);
+      }
+    }
+  }
+
   // ---------------------------------------------------------------------
   // Full data export / import (backup & restore — additional feature)
   // ---------------------------------------------------------------------
@@ -998,6 +1082,12 @@ class DatabaseHelper {
       await batch.commit(noResult: true);
     });
   }
+}
+
+class EntrySaveResult {
+  final String uuid;
+  final bool deleted;
+  const EntrySaveResult({required this.uuid, required this.deleted});
 }
 
 class _MonthYear {

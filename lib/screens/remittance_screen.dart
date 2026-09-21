@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
 import '../models/protisthan.dart';
+import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
@@ -70,13 +72,13 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
   Future<void> _save() async {
     setState(() => _saving = true);
     try {
-      await db.saveRemittance(
-        protisthanId: widget.protisthan.id!,
-        month: _month,
-        year: _year,
-        expenseAmount: double.tryParse(_expenseCtrl.text.trim()) ?? 0,
-        actualDepositAmount: _existingActualDepositAmount,
-      );
+      await context.read<AppDataProvider>().saveRemittance(
+            protisthan: widget.protisthan,
+            month: _month,
+            year: _year,
+            expenseAmount: double.tryParse(_expenseCtrl.text.trim()) ?? 0,
+            actualDepositAmount: _existingActualDepositAmount,
+          );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('সংরক্ষণ করা হয়েছে')),

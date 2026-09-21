@@ -1,0 +1,97 @@
+rules_version = '2';
+
+// বাইতুলমাল কালেকশন ট্র্যাকার — Firestore security rules.
+//
+// Schema (see lib/services/cloud_sync_service.dart for the exact writer):
+//   users/{authUid}                          {email, displayName}
+//     memberships/{protisthanId}             {role, joinedAt}   (reverse index)
+//   protisthans/{protisthanId}               {name, createdAt, ownerUid}
+//     members/{authUid}                      {email, displayName, role, joinedAt}
+//     wards/{wardId}                         {name, createdAt, targetAmount, isThanaWard}
+//     criteria/{criteriaId}                  {name, createdAt, specialOrder}
+//     entries/{entryId}                      {wardUuid, criteriaUuid, month, year, amount, updatedAt}
+//     remittances/{remittanceId}             {month, year, expenseAmount, actualDepositAmount, updatedAt}
+//
+// Roles (see lib/models/membership.dart): creator > admin > collector > member.
+// member = read-only, collector = +entries/remittances, admin = +structure
+// (ward/criteria) +user management, creator = +delete the থানা itself.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(protisthanId) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/protisthans/$(protisthanId)/members/$(request.auth.uid));
+    }
+
+    function myRole(protisthanId) {
+      return get(/databases/$(database)/documents/protisthans/$(protisthanId)/members/$(request.auth.uid)).data.role;
+    }
+
+    function hasRole(protisthanId, roles) {
+      return isMember(protisthanId) && myRole(protisthanId) in roles;
+    }
+
+    function isOwner(protisthanId) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/protisthans/$(protisthanId)).data.ownerUid == request.auth.uid;
+    }
+
+    // ---- users (needed so a member can be looked up/added by email — a
+    // client-only app has no callable "find auth user by email") ----
+    match /users/{uid} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == uid;
+
+      match /memberships/{protisthanId} {
+        // Read: only the user themself. Write: an admin/creator adding or
+        // removing this user, or the user bootstrapping their own creator
+        // row right after creating a brand-new থানা (see isOwner above).
+        allow read: if isSignedIn() && request.auth.uid == uid;
+        allow write: if isSignedIn() && (
+          hasRole(protisthanId, ['creator', 'admin']) ||
+          (request.auth.uid == uid && request.resource.data.role == 'creator' && isOwner(protisthanId))
+        );
+      }
+    }
+
+    match /protisthans/{protisthanId} {
+      allow read: if isMember(protisthanId);
+      // Creating a brand-new থানা: any signed-in user, but only as their
+      // own ownerUid (checked against the document being written, since
+      // no members/ doc exists yet to check a role against).
+      allow create: if isSignedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if hasRole(protisthanId, ['creator', 'admin']);
+      allow delete: if hasRole(protisthanId, ['creator']);
+
+      match /members/{memberUid} {
+        allow read: if isMember(protisthanId);
+        allow write: if hasRole(protisthanId, ['creator', 'admin']) ||
+          (request.auth.uid == memberUid && request.resource.data.role == 'creator' && isOwner(protisthanId));
+      }
+
+      match /wards/{wardId} {
+        allow read: if isMember(protisthanId);
+        allow write: if hasRole(protisthanId, ['creator', 'admin']);
+      }
+
+      match /criteria/{criteriaId} {
+        allow read: if isMember(protisthanId);
+        allow write: if hasRole(protisthanId, ['creator', 'admin']);
+      }
+
+      match /entries/{entryId} {
+        allow read: if isMember(protisthanId);
+        allow write: if hasRole(protisthanId, ['creator', 'admin', 'collector']);
+      }
+
+      match /remittances/{remittanceId} {
+        allow read: if isMember(protisthanId);
+        allow write: if hasRole(protisthanId, ['creator', 'admin', 'collector']);
+      }
+    }
+  }
+}

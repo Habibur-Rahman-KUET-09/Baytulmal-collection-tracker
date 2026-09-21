@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../db/database_helper.dart';
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
+import '../models/ward.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
@@ -44,7 +45,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
 
   late int _month;
   late int _year;
-  int? _thanaWardId;
+  Ward? _thanaWard;
   double _thanaTargetAmount = 0;
   Criteria? _incomeCriteria;
   List<Criteria> _normalCriteria = [];
@@ -91,7 +92,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
 
     if (!mounted) return;
     setState(() {
-      _thanaWardId = thanaWard?.id;
+      _thanaWard = thanaWard;
       _thanaTargetAmount = thanaWard?.targetAmount ?? 0;
       _incomeCriteria = incomeCriteria;
       _normalCriteria = normalCriteria;
@@ -114,7 +115,8 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
-    if (_thanaWardId == null) return;
+    final thanaWard = _thanaWard;
+    if (thanaWard == null) return;
     setState(() => _saving = true);
     final appData = context.read<AppDataProvider>();
     try {
@@ -122,13 +124,13 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
       for (final c in allCriteria) {
         final text = _controllers[c.id!]!.text.trim();
         final amount = text.isEmpty ? null : double.parse(text);
-        await db.saveEntry(
-          wardId: _thanaWardId!,
-          criteriaId: c.id!,
+        await appData.saveEntry(
+          protisthan: widget.protisthan,
+          ward: thanaWard,
+          criteria: c,
           month: _month,
           year: _year,
           amount: amount,
-          uuidFactory: appData.newUuid(),
         );
       }
       if (!mounted) return;

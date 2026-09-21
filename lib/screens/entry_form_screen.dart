@@ -112,13 +112,13 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
         if (c.hasNoEntry) continue;
         final text = _controllers[c.id!]!.text.trim();
         final amount = text.isEmpty ? null : double.parse(text);
-        await db.saveEntry(
-          wardId: widget.ward.id!,
-          criteriaId: c.id!,
+        await appData.saveEntry(
+          protisthan: widget.protisthan,
+          ward: widget.ward,
+          criteria: c,
           month: _month,
           year: _year,
           amount: amount,
-          uuidFactory: appData.newUuid(),
         );
       }
       if (!mounted) return;
