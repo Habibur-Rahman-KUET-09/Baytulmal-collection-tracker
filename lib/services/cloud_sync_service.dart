@@ -291,10 +291,13 @@ class CloudSyncService {
   /// creator — used both for brand-new থানা creation and for claiming
   /// pre-Firebase local data the first time its owner signs in.
   ///
-  /// The creator membership is written FIRST, before any ward/criteria/
-  /// entry/remittance doc — `firestore.rules` only allows writing those
-  /// once a `members/{uid}` doc for this থানা exists, so this order is
-  /// required, not just a nicety.
+  /// Writes are collapsed into (usually) two round-trips instead of one
+  /// per document: a bootstrap batch lands the থানা doc + creator
+  /// membership first — `firestore.rules` only allows writing wards/
+  /// criteria/entries/remittances once a `members/{uid}` doc for this
+  /// থানা exists, so that ordering is required — then every ward/
+  /// criteria/entry/remittance doc is written via chunked batches
+  /// (committed in parallel) instead of one `await` per document.
   Future<void> pushFullProtisthanBundle(
     Protisthan p, {
     required List<Ward> wards,
@@ -305,34 +308,73 @@ class CloudSyncService {
     String? email,
     String? displayName,
   }) async {
-    await pushProtisthan(p, ownerUid: uid);
-    await addOrUpdateMember(p.uuid, uid, ProtisthanRole.creator, email: email, displayName: displayName);
-    for (final w in wards) {
-      await pushWard(p.uuid, w);
-    }
-    for (final c in criteria) {
-      await pushCriteria(p.uuid, c);
-    }
+    final joinedAt = DateTime.now().toIso8601String();
+    final protisthanRef = _protisthans.doc(p.uuid);
+
+    final bootstrap = _fs.batch();
+    bootstrap.set(
+      protisthanRef,
+      {'name': p.name, 'createdAt': p.createdAt, 'ownerUid': uid},
+      SetOptions(merge: true),
+    );
+    bootstrap.set(
+      protisthanRef.collection('members').doc(uid),
+      {'email': email, 'displayName': displayName, 'role': ProtisthanRole.creator.name, 'joinedAt': joinedAt},
+      SetOptions(merge: true),
+    );
+    bootstrap.set(
+      _users.doc(uid).collection('memberships').doc(p.uuid),
+      {'role': ProtisthanRole.creator.name, 'joinedAt': joinedAt},
+      SetOptions(merge: true),
+    );
+    await bootstrap.commit();
+
     final wardUuidByLocalId = {for (final w in wards) w.id!: w.uuid};
     final criteriaUuidByLocalId = {for (final c in criteria) c.id!: c.uuid};
-    for (final e in entries) {
-      final wardUuid = wardUuidByLocalId[e.wardId];
-      final criteriaUuid = criteriaUuidByLocalId[e.criteriaId];
-      if (wardUuid == null || criteriaUuid == null) continue;
-      await pushEntry(
-        p.uuid,
-        entryUuid: e.uuid,
-        wardUuid: wardUuid,
-        criteriaUuid: criteriaUuid,
-        month: e.month,
-        year: e.year,
-        amount: e.amount,
-        updatedAt: e.updatedAt,
-      );
+
+    final writes = <void Function(WriteBatch)>[
+      for (final w in wards)
+        (b) => b.set(protisthanRef.collection('wards').doc(w.uuid), {
+              'name': w.name,
+              'createdAt': w.createdAt,
+              'targetAmount': w.targetAmount,
+              'isThanaWard': w.isThanaWard,
+            }),
+      for (final c in criteria)
+        (b) => b.set(protisthanRef.collection('criteria').doc(c.uuid), {
+              'name': c.name,
+              'createdAt': c.createdAt,
+              'specialOrder': c.specialOrder,
+            }),
+      for (final e in entries)
+        if (wardUuidByLocalId[e.wardId] != null && criteriaUuidByLocalId[e.criteriaId] != null)
+          (b) => b.set(protisthanRef.collection('entries').doc(e.uuid), {
+                'wardUuid': wardUuidByLocalId[e.wardId],
+                'criteriaUuid': criteriaUuidByLocalId[e.criteriaId],
+                'month': e.month,
+                'year': e.year,
+                'amount': e.amount,
+                'updatedAt': e.updatedAt,
+              }),
+      for (final r in remittances)
+        (b) => b.set(protisthanRef.collection('remittances').doc(r.uuid), {
+              'month': r.month,
+              'year': r.year,
+              'expenseAmount': r.expenseAmount,
+              'actualDepositAmount': r.actualDepositAmount,
+              'updatedAt': r.updatedAt,
+            }),
+    ];
+
+    final commits = <Future<void>>[];
+    for (var i = 0; i < writes.length; i += _batchChunkSize) {
+      final batch = _fs.batch();
+      for (final write in writes.skip(i).take(_batchChunkSize)) {
+        write(batch);
+      }
+      commits.add(batch.commit());
     }
-    for (final r in remittances) {
-      await pushRemittance(p.uuid, r);
-    }
+    await Future.wait(commits);
   }
 
   // -----------------------------------------------------------------------
@@ -343,7 +385,19 @@ class CloudSyncService {
   /// local SQLite cache by `uuid`, resolving cloud uuid references to local
   /// int foreign keys, and pruning local rows that were deleted remotely.
   Future<void> pullAndMergeProtisthan(String protisthanUuid, DatabaseHelper db) async {
-    final pDoc = await _protisthans.doc(protisthanUuid).get();
+    final ref = _protisthans.doc(protisthanUuid);
+
+    // Fire every network read up front — they're independent, so this
+    // collapses what used to be 5 sequential round-trips into roughly the
+    // time of the single slowest one (the awaits below just pick up
+    // results that are already in flight).
+    final pFuture = ref.get();
+    final criteriaFuture = ref.collection('criteria').get();
+    final wardFuture = ref.collection('wards').get();
+    final entryFuture = ref.collection('entries').get();
+    final remittanceFuture = ref.collection('remittances').get();
+
+    final pDoc = await pFuture;
     if (!pDoc.exists) return;
     final pData = pDoc.data()!;
     await db.upsertRawByUuid('protisthan', {
@@ -354,9 +408,7 @@ class CloudSyncService {
     final localProtisthanId = await db.getLocalIdByUuid('protisthan', protisthanUuid);
     if (localProtisthanId == null) return;
 
-    final ref = _protisthans.doc(protisthanUuid);
-
-    final criteriaSnap = await ref.collection('criteria').get();
+    final criteriaSnap = await criteriaFuture;
     final criteriaKeep = <String>{};
     for (final d in criteriaSnap.docs) {
       criteriaKeep.add(d.id);
@@ -371,7 +423,7 @@ class CloudSyncService {
     }
     await db.pruneNotInUuids('criteria', 'protisthan_id', localProtisthanId, criteriaKeep);
 
-    final wardSnap = await ref.collection('wards').get();
+    final wardSnap = await wardFuture;
     final wardKeep = <String>{};
     for (final d in wardSnap.docs) {
       wardKeep.add(d.id);
@@ -399,7 +451,7 @@ class CloudSyncService {
       if (id != null) criteriaLocalIds[uuid] = id;
     }
 
-    final entrySnap = await ref.collection('entries').get();
+    final entrySnap = await entryFuture;
     final entryKeepByWard = <int, Set<String>>{};
     for (final d in entrySnap.docs) {
       final data = d.data();
@@ -423,7 +475,7 @@ class CloudSyncService {
       await db.pruneNotInUuids('entry', 'ward_id', wardLocalId, entryKeepByWard[wardLocalId] ?? {});
     }
 
-    final remittanceSnap = await ref.collection('remittances').get();
+    final remittanceSnap = await remittanceFuture;
     final remittanceKeep = <String>{};
     for (final d in remittanceSnap.docs) {
       remittanceKeep.add(d.id);

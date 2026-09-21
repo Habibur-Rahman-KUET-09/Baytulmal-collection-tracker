@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -46,6 +47,13 @@ class AppDataProvider extends ChangeNotifier {
 
   ProtisthanRole? roleFor(Protisthan p) => myRoles[p.uuid];
 
+  /// Full network resync: pulls every থানা the signed-in user belongs to
+  /// down from Firestore and merges it into the local cache. This does a
+  /// round-trip per membership, so it's reserved for app start, explicit
+  /// pull-to-refresh, and after a backup import — everyday local CRUD
+  /// (add/rename/delete a থানা/ward/criteria) uses the much cheaper
+  /// [_refreshLocalView] instead, since it already knows the outcome of
+  /// its own single push without needing to ask Firestore again.
   Future<void> refresh() async {
     isLoading = true;
     notifyListeners();
@@ -55,9 +63,9 @@ class AppDataProvider extends ChangeNotifier {
       await cloud.upsertCurrentUserProfile();
       await _claimUnclaimedLocalProtisthans(uid);
       myRoles = await cloud.myMemberships();
-      for (final protisthanUuid in myRoles.keys) {
-        await cloud.pullAndMergeProtisthan(protisthanUuid, db);
-      }
+      // Independent per-থানা pulls — run them together instead of one
+      // round-trip at a time.
+      await Future.wait(myRoles.keys.map((uuid) => cloud.pullAndMergeProtisthan(uuid, db)));
       // Local থানা this device once had but is no longer a member of (e.g.
       // removed, or deleted by someone else) — drop it locally too.
       final localAll = await db.getAllProtisthan();
@@ -70,11 +78,21 @@ class AppDataProvider extends ChangeNotifier {
       myRoles = {};
     }
 
+    await _refreshLocalView();
+    isLoading = false;
+    notifyListeners();
+  }
+
+  /// Re-reads the protisthan list/counts from the local SQLite cache only
+  /// — no Firestore calls. Used after a CRUD write whose cloud push (and
+  /// its effect on [myRoles]) is already known locally, so a full
+  /// [refresh] network resync would just be re-confirming what we already
+  /// know.
+  Future<void> _refreshLocalView() async {
     final all = await db.getAllProtisthan();
-    protisthanList = uid == null ? all : all.where((p) => myRoles.containsKey(p.uuid)).toList();
+    protisthanList = _uid == null ? all : all.where((p) => myRoles.containsKey(p.uuid)).toList();
     wardCounts = await db.getWardCountsByProtisthan();
     criteriaCounts = await db.getCriteriaCountsByProtisthan();
-    isLoading = false;
     notifyListeners();
   }
 
@@ -85,32 +103,36 @@ class AppDataProvider extends ChangeNotifier {
   Future<void> _claimUnclaimedLocalProtisthans(String uid) async {
     final user = AuthService.instance.currentUser;
     final localProtisthans = await db.getAllProtisthan();
-    for (final p in localProtisthans) {
-      final myRole = await cloud.getMyRole(p.uuid);
-      if (myRole != null) continue;
-      final existsRemotely = await cloud.protisthanExists(p.uuid);
-      if (existsRemotely) continue; // belongs to someone else — not ours to claim
-      final criteria = await db.getCriteriaForProtisthan(p.id!);
-      final wards = await db.getWardsForProtisthan(p.id!);
-      final thanaWard = await db.getThanaWard(p.id!);
-      final allWards = [...wards, ?thanaWard];
-      final entries = <Entry>[];
-      for (final w in allWards) {
-        final wardEntries = await db.getEntriesRawForWard(w.id!);
-        entries.addAll(wardEntries);
-      }
-      final remittances = await db.getRemittancesForProtisthan(p.id!);
-      await cloud.pushFullProtisthanBundle(
-        p,
-        wards: allWards,
-        criteria: criteria,
-        entries: entries,
-        remittances: remittances,
-        uid: uid,
-        email: user?.email,
-        displayName: user?.displayName,
-      );
+    // Each থানা's claim-check-and-push is independent of the others —
+    // run them together instead of one at a time.
+    await Future.wait(localProtisthans.map((p) => _claimIfUnclaimed(p, uid, user)));
+  }
+
+  Future<void> _claimIfUnclaimed(Protisthan p, String uid, User? user) async {
+    final myRole = await cloud.getMyRole(p.uuid);
+    if (myRole != null) return;
+    final existsRemotely = await cloud.protisthanExists(p.uuid);
+    if (existsRemotely) return; // belongs to someone else — not ours to claim
+    final criteria = await db.getCriteriaForProtisthan(p.id!);
+    final wards = await db.getWardsForProtisthan(p.id!);
+    final thanaWard = await db.getThanaWard(p.id!);
+    final allWards = [...wards, ?thanaWard];
+    final entries = <Entry>[];
+    for (final w in allWards) {
+      final wardEntries = await db.getEntriesRawForWard(w.id!);
+      entries.addAll(wardEntries);
     }
+    final remittances = await db.getRemittancesForProtisthan(p.id!);
+    await cloud.pushFullProtisthanBundle(
+      p,
+      wards: allWards,
+      criteria: criteria,
+      entries: entries,
+      remittances: remittances,
+      uid: uid,
+      email: user?.email,
+      displayName: user?.displayName,
+    );
   }
 
   Future<void> addProtisthan(String name, {double thanaNisab = 0}) async {
@@ -120,7 +142,11 @@ class AppDataProvider extends ChangeNotifier {
       thanaNisab: thanaNisab,
     );
     await _pushNewProtisthan(id);
-    await refresh();
+    // We already know the outcome of our own push — a signed-in user is
+    // always this new থানা's creator — so record it locally instead of
+    // paying for a network round-trip to learn what we already know.
+    if (_uid != null) myRoles[uuid] = ProtisthanRole.creator;
+    await _refreshLocalView();
   }
 
   Future<void> _pushNewProtisthan(int localId) async {
@@ -156,7 +182,7 @@ class AppDataProvider extends ChangeNotifier {
         if (thanaWard != null) await cloud.pushWard(p.uuid, thanaWard);
       }
     }
-    await refresh();
+    await _refreshLocalView();
   }
 
   Future<void> deleteProtisthan(int id) async {
@@ -164,8 +190,9 @@ class AppDataProvider extends ChangeNotifier {
     await db.deleteProtisthan(id);
     if (p != null && _uid != null) {
       await cloud.deleteProtisthanCloud(p.uuid);
+      myRoles.remove(p.uuid);
     }
-    await refresh();
+    await _refreshLocalView();
   }
 
   Future<int> addCriteria(int protisthanId, String name) async {
@@ -177,7 +204,7 @@ class AppDataProvider extends ChangeNotifier {
       final c = await db.getCriteriaById(id);
       if (p != null && c != null) await cloud.pushCriteria(p.uuid, c);
     }
-    await refresh();
+    await _refreshLocalView();
     return id;
   }
 
@@ -188,7 +215,7 @@ class AppDataProvider extends ChangeNotifier {
       final p = await db.getProtisthan(c.protisthanId);
       if (p != null) await cloud.pushCriteria(p.uuid, updated);
     }
-    await refresh();
+    await _refreshLocalView();
   }
 
   Future<void> deleteCriteria(int id) async {
@@ -198,7 +225,7 @@ class AppDataProvider extends ChangeNotifier {
       final p = await db.getProtisthan(c.protisthanId);
       if (p != null) await cloud.deleteCriteriaCloud(p.uuid, c.uuid);
     }
-    await refresh();
+    await _refreshLocalView();
   }
 
   Future<int> addWard(int protisthanId, String name, {double targetAmount = 0}) async {
@@ -216,7 +243,7 @@ class AppDataProvider extends ChangeNotifier {
       final w = await db.getWard(id);
       if (p != null && w != null) await cloud.pushWard(p.uuid, w);
     }
-    await refresh();
+    await _refreshLocalView();
     return id;
   }
 
@@ -227,7 +254,7 @@ class AppDataProvider extends ChangeNotifier {
       final p = await db.getProtisthan(w.protisthanId);
       if (p != null) await cloud.pushWard(p.uuid, updated);
     }
-    await refresh();
+    await _refreshLocalView();
   }
 
   Future<void> deleteWard(int id) async {
@@ -237,7 +264,7 @@ class AppDataProvider extends ChangeNotifier {
       final p = await db.getProtisthan(w.protisthanId);
       if (p != null) await cloud.deleteWardCloud(p.uuid, w.uuid);
     }
-    await refresh();
+    await _refreshLocalView();
   }
 
   /// Saves (or, if [amount] is null, deletes) a single entry and mirrors
