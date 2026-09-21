@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/criteria.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
@@ -62,8 +63,9 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('${widget.ward.name} — সামারি')),
+      appBar: AppBar(title: Text(s.wardSummaryTitle(widget.ward.name))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -91,7 +93,7 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
                           style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 4),
-                        Text('${widget.ward.name}-এর মোট'),
+                        Text(s.wardSummaryTotalLabel(widget.ward.name)),
                       ],
                     ),
                   ),
@@ -101,7 +103,7 @@ class _WardSummaryScreenState extends State<WardSummaryScreen> {
                   _TargetMatchCard(target: widget.ward.targetAmount, breakdown: _breakdown),
                 ],
                 const SizedBox(height: 20),
-                const Text('খাত অনুযায়ী বিভাজন', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(s.criteriaBreakdownTitle, style: const TextStyle(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 ..._breakdown.map(
                   (e) => Card(
@@ -132,6 +134,7 @@ class _TargetMatchCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final actualDeposit = _actualDeposit;
     final matched = (target - actualDeposit).abs() < 0.005;
     return Container(
@@ -150,8 +153,7 @@ class _TargetMatchCard extends StatelessWidget {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              'ধার্যকৃত নিসাব: ${CurrencyFormatter.format(target)}'
-              '${matched ? ' — বাস্তব জমার সাথে মিলেছে' : ' — বাস্তব জমা: ${CurrencyFormatter.format(actualDeposit)}'}',
+              s.targetMatchLine(CurrencyFormatter.format(target), matched, CurrencyFormatter.format(actualDeposit)),
               style: const TextStyle(fontSize: 12.5),
             ),
           ),

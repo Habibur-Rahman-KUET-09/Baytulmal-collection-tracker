@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
@@ -70,7 +71,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
     });
   }
 
-  Future<void> _save() async {
+  Future<void> _save(Strings s) async {
     setState(() => _saving = true);
     try {
       await context.read<AppDataProvider>().saveRemittance(
@@ -82,7 +83,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
           );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('সংরক্ষণ করা হয়েছে')),
+          SnackBar(content: Text(s.savedMessage)),
         );
       }
     } finally {
@@ -92,13 +93,14 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canEnter = role?.canEnterData ?? false;
     final expense = double.tryParse(_expenseCtrl.text.trim()) ?? 0;
     final thanaNisab = _actualDepositTotal - expense;
 
     return Scaffold(
-      appBar: AppBar(title: Text('থানার বাস্তব জমা খরচ (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text(s.remittanceTitle(widget.protisthan.name))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -117,17 +119,17 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 ),
                 const SizedBox(height: 20),
                 _StatRow(
-                  label: '১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা',
+                  label: s.remittanceRow1Label,
                   value: CurrencyFormatter.format(_actualDepositTotal),
                 ),
                 const SizedBox(height: 14),
                 TextField(
                   controller: _expenseCtrl,
                   enabled: canEnter,
-                  decoration: const InputDecoration(
-                    labelText: '২. থানার ব্যয় (৳)',
-                    helperText: 'ঐচ্ছিক — খালি রাখলে ০ ধরা হবে',
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    labelText: s.remittanceExpenseLabel,
+                    helperText: s.remittanceExpenseHelper,
+                    border: const OutlineInputBorder(),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                   inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
@@ -137,16 +139,16 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                 const Divider(),
                 const SizedBox(height: 4),
                 _StatRow(
-                  label: 'থানার নিসাব (১ - ২)',
+                  label: s.remittanceNisabRowLabel,
                   value: CurrencyFormatter.format(thanaNisab),
                   bold: true,
                 ),
                 const SizedBox(height: 24),
                 if (canEnter)
                   FilledButton.icon(
-                    onPressed: _saving ? null : _save,
+                    onPressed: _saving ? null : () => _save(s),
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text('সংরক্ষণ করুন'),
+                    label: Text(s.save),
                   ),
               ],
             ),

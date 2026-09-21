@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 import '../models/protisthan.dart';
 import '../services/excel_export_service.dart';
 import '../services/pdf_export_service.dart';
@@ -55,7 +56,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
     });
   }
 
-  Future<void> _exportPdf() async {
+  Future<void> _exportPdf(Strings s) async {
     if (_data == null) return;
     setState(() => _exporting = true);
     try {
@@ -70,15 +71,14 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('PDF তৈরি করা যায়নি: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.pdfGenerateFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
   }
 
-  Future<void> _printPreview() async {
+  Future<void> _printPreview(Strings s) async {
     if (_data == null) return;
     setState(() => _exporting = true);
     try {
@@ -93,15 +93,14 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('প্রিভিউ খোলা যায়নি: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.previewOpenFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
   }
 
-  Future<void> _exportExcel() async {
+  Future<void> _exportExcel(Strings s) async {
     if (_data == null) return;
     setState(() => _exporting = true);
     try {
@@ -116,8 +115,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
       );
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Excel তৈরি করা যায়নি: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(s.excelGenerateFailed('$e'))));
       }
     } finally {
       if (mounted) setState(() => _exporting = false);
@@ -126,16 +124,17 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final data = _data;
     const headerStyle = TextStyle(fontWeight: FontWeight.bold);
     return Scaffold(
       appBar: AppBar(
-        title: Text('রিপোর্ট — ${widget.protisthan.name}'),
+        title: Text(s.matrixReportTitle(widget.protisthan.name)),
         actions: [
           IconButton(
-            tooltip: 'প্রিন্ট / প্রিভিউ',
+            tooltip: s.printPreviewTooltip,
             icon: const Icon(Icons.print_outlined),
-            onPressed: (_data == null || _exporting) ? null : _printPreview,
+            onPressed: (_data == null || _exporting) ? null : () => _printPreview(s),
           ),
         ],
       ),
@@ -158,12 +157,12 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
           if (_loading)
             const Expanded(child: Center(child: CircularProgressIndicator()))
           else if (data == null || (data.wards.isEmpty || data.criteriaList.isEmpty))
-            const Expanded(
+            Expanded(
               child: Center(
                 child: Padding(
-                  padding: EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(24),
                   child: Text(
-                    'রিপোর্ট তৈরি করতে অন্তত একটি ওয়ার্ড এবং একটি খাত প্রয়োজন।',
+                    s.matrixNeedsWardAndCriteria,
                     textAlign: TextAlign.center,
                   ),
                 ),
@@ -180,9 +179,9 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                       Theme.of(context).colorScheme.surfaceContainerHighest,
                     ),
                     columns: [
-                      DataColumn(label: Text('ওয়ার্ড', style: headerStyle)),
+                      DataColumn(label: Text(s.matrixColumnWard, style: headerStyle)),
                       ...data.criteriaList.map((c) => DataColumn(label: Text(c.name, style: headerStyle))),
-                      DataColumn(label: Text('মোট', style: headerStyle)),
+                      DataColumn(label: Text(s.matrixColumnTotal, style: headerStyle)),
                     ],
                     rows: [
                       for (final w in data.wards)
@@ -201,7 +200,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                           Theme.of(context).colorScheme.surfaceContainerHighest,
                         ),
                         cells: [
-                          DataCell(Text('সর্বমোট', style: headerStyle)),
+                          DataCell(Text(s.matrixRowGrandTotal, style: headerStyle)),
                           ...data.criteriaList.map(
                             (c) => DataCell(Text(
                               CurrencyFormatter.format(data.colTotals[c.id!] ?? 0, withSymbol: false),
@@ -215,7 +214,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                         ],
                       ),
                       DataRow(cells: [
-                        const DataCell(Text('থানা')),
+                        DataCell(Text(s.matrixRowThana)),
                         ...data.criteriaList.map(
                           (c) => DataCell(Text(
                             data.thanaRow.containsKey(c.id!)
@@ -233,7 +232,7 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                           Theme.of(context).colorScheme.surfaceContainerHighest,
                         ),
                         cells: [
-                          DataCell(Text('থানাসহ সর্বমোট', style: headerStyle)),
+                          DataCell(Text(s.matrixRowCombinedGrandTotal, style: headerStyle)),
                           ...data.criteriaList.map(
                             (c) => DataCell(Text(
                               CurrencyFormatter.format(data.combinedColTotals[c.id!] ?? 0, withSymbol: false),
@@ -259,16 +258,16 @@ class _MatrixReportScreenState extends State<MatrixReportScreen> {
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.picture_as_pdf_outlined),
-                      label: const Text('PDF ডাউনলোড'),
-                      onPressed: (data == null || _exporting) ? null : _exportPdf,
+                      label: Text(s.pdfDownloadButton),
+                      onPressed: (data == null || _exporting) ? null : () => _exportPdf(s),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: OutlinedButton.icon(
                       icon: const Icon(Icons.grid_on_outlined),
-                      label: const Text('Excel ডাউনলোড'),
-                      onPressed: (data == null || _exporting) ? null : _exportExcel,
+                      label: Text(s.excelDownloadButton),
+                      onPressed: (data == null || _exporting) ? null : () => _exportExcel(s),
                     ),
                   ),
                 ],

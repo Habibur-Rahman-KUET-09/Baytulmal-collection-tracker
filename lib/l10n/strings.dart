@@ -259,6 +259,39 @@ class Strings {
   String get criteriaByThanaTitle => _t('খাত অনুযায়ী থানার আয় (সবগুলো ঐচ্ছিক)', "থানা's income by criteria (all optional)");
   String get noThanaCriteriaMessage => _t('এই থানার জন্য কোনো খাত নেই।', 'No criteria for this থানা.');
 
+  // ---- screens/remittance_screen.dart ----
+  String remittanceTitle(String protisthanName) => _t('থানার বাস্তব জমা খরচ ($protisthanName)', "থানা's actual deposit & expense ($protisthanName)");
+  String get remittanceRow1Label => _t('১. থানাসহ সকল ওয়ার্ডের বাস্তব জমা', '1. Actual deposit of all wards + থানা');
+  String get remittanceExpenseLabel => _t('২. থানার ব্যয় (৳)', "2. থানা's expense (৳)");
+  String get remittanceExpenseHelper => _t('ঐচ্ছিক — খালি রাখলে ০ ধরা হবে', 'Optional — treated as 0 if left blank');
+  String get remittanceNisabRowLabel => _t('থানার নিসাব (১ - ২)', "থানা's নিসাব (1 − 2)");
+  String get savedMessage => _t('সংরক্ষণ করা হয়েছে', 'Saved');
+
+  // ---- screens/ward_summary_screen.dart ----
+  String wardSummaryTitle(String wardName) => _t('$wardName — সামারি', '$wardName — Summary');
+  String wardSummaryTotalLabel(String wardName) => _t('$wardName-এর মোট', "$wardName's total");
+  String get criteriaBreakdownTitle => _t('খাত অনুযায়ী বিভাজন', 'Breakdown by criteria');
+  String targetMatchLine(String target, bool matched, String actual) => _t(
+        'ধার্যকৃত নিসাব: $target${matched ? ' — বাস্তব জমার সাথে মিলেছে' : ' — বাস্তব জমা: $actual'}',
+        'Target নিসাব: $target${matched ? ' — matches the actual deposit' : ' — actual deposit: $actual'}',
+      );
+
+  // ---- screens/matrix_report_screen.dart ----
+  String matrixReportTitle(String protisthanName) => _t('রিপোর্ট — $protisthanName', 'Report — $protisthanName');
+  String get printPreviewTooltip => _t('প্রিন্ট / প্রিভিউ', 'Print / preview');
+  String pdfGenerateFailed(String error) => _t('PDF তৈরি করা যায়নি: $error', 'Could not generate PDF: $error');
+  String previewOpenFailed(String error) => _t('প্রিভিউ খোলা যায়নি: $error', 'Could not open preview: $error');
+  String excelGenerateFailed(String error) => _t('Excel তৈরি করা যায়নি: $error', 'Could not generate Excel: $error');
+  String get matrixNeedsWardAndCriteria =>
+      _t('রিপোর্ট তৈরি করতে অন্তত একটি ওয়ার্ড এবং একটি খাত প্রয়োজন।', 'At least one ward and one criteria are needed to generate a report.');
+  String get matrixColumnWard => _t('ওয়ার্ড', 'Ward');
+  String get matrixColumnTotal => _t('মোট', 'Total');
+  String get matrixRowGrandTotal => _t('সর্বমোট', 'Grand total');
+  String get matrixRowThana => _t('থানা', 'থানা');
+  String get matrixRowCombinedGrandTotal => _t('থানাসহ সর্বমোট', 'Grand total incl. থানা');
+  String get pdfDownloadButton => _t('PDF ডাউনলোড', 'Download PDF');
+  String get excelDownloadButton => _t('Excel ডাউনলোড', 'Download Excel');
+
   // ---- widgets/confirm_dialog.dart ----
   String get dialogProtisthanNameLabel => _t('থানার নাম', 'থানা name');
   String get dialogWardNameLabel => _t('ওয়ার্ডের নাম', 'Ward name');
