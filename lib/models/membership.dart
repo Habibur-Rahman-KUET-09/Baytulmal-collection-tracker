@@ -6,19 +6,6 @@
 enum ProtisthanRole { creator, admin, collector, member }
 
 extension ProtisthanRoleX on ProtisthanRole {
-  String get label {
-    switch (this) {
-      case ProtisthanRole.creator:
-        return 'নির্মাতা';
-      case ProtisthanRole.admin:
-        return 'অ্যাডমিন';
-      case ProtisthanRole.collector:
-        return 'কালেক্টর';
-      case ProtisthanRole.member:
-        return 'সদস্য';
-    }
-  }
-
   /// আয়/ব্যয়/এন্ট্রি ফর্ম পূরণ করতে পারবে কি না।
   bool get canEnterData =>
       this == ProtisthanRole.creator || this == ProtisthanRole.admin || this == ProtisthanRole.collector;

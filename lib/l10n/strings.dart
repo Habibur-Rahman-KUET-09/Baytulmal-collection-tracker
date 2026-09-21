@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:provider/provider.dart';
 
+import '../models/membership.dart';
 import '../utils/bangla_utils.dart';
 import 'locale_provider.dart';
 
@@ -117,6 +118,109 @@ class Strings {
       _t('কোনো খাত যোগ করা হয়নি।\nনিচের + বোতাম চেপে একটি খাত যোগ করুন।', 'No criteria added yet.\nTap the + button below to add one.');
   String get specialCriteriaNote =>
       _t('বিশেষ খাত — ধার্যকৃত নিসাবের সাথে সম্পর্কিত', 'Special criteria — related to the target নিসাব');
+
+  // ---- screens/member_management_screen.dart ----
+  String memberManagementTitle(String protisthanName) => _t('সদস্য ($protisthanName)', 'Members ($protisthanName)');
+  String get emptyMembersMessage => _t('কোনো সদস্য পাওয়া যায়নি।', 'No members found.');
+  String get memberNoUserFound => _t(
+        'এই ইমেইলে কোনো ব্যবহারকারী পাওয়া যায়নি — তাকে আগে একবার অ্যাপে সাইন-ইন করতে হবে।',
+        'No user found with this email — they need to sign in to the app at least once first.',
+      );
+  String get memberAdded => _t('সদস্য যোগ করা হয়েছে', 'Member added');
+  String get addMemberTitle => _t('নতুন সদস্য যোগ করুন', 'Add new member');
+  String get memberEmailLabel => _t('ইমেইল', 'Email');
+  String get memberRoleLabel => _t('রোল', 'Role');
+  String get addButton => _t('যোগ করুন', 'Add');
+  String memberChangeRoleTitle(String who) => _t('$who — রোল পরিবর্তন', '$who — Change role');
+  String get memberRemoveTitle => _t('সদস্য বাদ দেবেন?', 'Remove member?');
+  String memberRemoveMessage(String who) => _t(
+        '"$who" কে এই থানা থেকে বাদ দিলে তার আর এই থানায় প্রবেশাধিকার থাকবে না।',
+        'Removing "$who" from this থানা will revoke their access to it.',
+      );
+  String get memberChangeRoleMenuItem => _t('রোল পরিবর্তন', 'Change role');
+  String get memberRemoveMenuItem => _t('বাদ দিন', 'Remove');
+
+  String roleLabel(ProtisthanRole role) {
+    switch (role) {
+      case ProtisthanRole.creator:
+        return _t('নির্মাতা', 'Creator');
+      case ProtisthanRole.admin:
+        return _t('অ্যাডমিন', 'Admin');
+      case ProtisthanRole.collector:
+        return _t('কালেক্টর', 'Collector');
+      case ProtisthanRole.member:
+        return _t('সদস্য', 'Member');
+    }
+  }
+
+  // ---- screens/data_management_screen.dart ----
+  String get dataManagementTitle => _t('ডেটা ব্যবস্থাপনা', 'Data management');
+  String get dataExportingStatus => _t('ব্যাকআপ ফাইল তৈরি হচ্ছে...', 'Creating backup file...');
+  String get dataExportDone => _t('ব্যাকআপ ফাইল তৈরি হয়েছে', 'Backup file created');
+  String dataExportFailed(String error) => _t('এক্সপোর্ট ব্যর্থ হয়েছে: $error', 'Export failed: $error');
+  String get dataReadingStatus => _t('ব্যাকআপ ফাইল পড়া ও যাচাই করা হচ্ছে...', 'Reading and validating backup file...');
+  String get dataReplaceTitle => _t('বিদ্যমান ডেটা প্রতিস্থাপন করা হবে', 'Existing data will be replaced');
+  String dataReplaceMessage(int protisthanCount, int wardCount, int criteriaCount, int entryCount) {
+    final p = BanglaMonths.toBanglaDigits(protisthanCount);
+    final w = BanglaMonths.toBanglaDigits(wardCount);
+    final c = BanglaMonths.toBanglaDigits(criteriaCount);
+    final e = BanglaMonths.toBanglaDigits(entryCount);
+    return _t(
+      'এই ব্যাকআপ ফাইলে $pটি থানা, $wটি ওয়ার্ড, $cটি খাত এবং $eটি এন্ট্রি আছে।\n\n'
+          'ইমপোর্ট করলে অ্যাপে বর্তমানে থাকা সকল ডেটা মুছে গিয়ে এই ব্যাকআপ দিয়ে প্রতিস্থাপিত হবে। '
+          'এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
+      'This backup file has $p থানা, $w wards, $c criteria, and $e entries.\n\n'
+          "Importing will delete all of the app's current data and replace it "
+          'with this backup. This cannot be undone.',
+    );
+  }
+
+  String get dataReplaceButton => _t('প্রতিস্থাপন করুন', 'Replace');
+  String get dataRestoringLocalStatus => _t('স্থানীয়ভাবে প্রতিস্থাপন করা হচ্ছে...', 'Restoring locally...');
+  String get dataSyncingCloudStatus => _t('ক্লাউডে সিঙ্ক করা হচ্ছে...', 'Syncing to cloud...');
+  String get dataImportDone => _t('ডেটা সফলভাবে ইমপোর্ট করা হয়েছে', 'Data imported successfully');
+  String dataImportFailed(String error) => _t('ইমপোর্ট ব্যর্থ হয়েছে: $error', 'Import failed: $error');
+
+  String get dataExportCardTitle => _t('ডেটা এক্সপোর্ট (Backup)', 'Data export (Backup)');
+  String get dataExportCardBody => _t(
+        'সকল থানা, ওয়ার্ড, খাত ও এন্ট্রি ডেটা একটি JSON ফাইলে সংরক্ষণ করুন। '
+            'ফাইলটি শেয়ার করে অন্য ডিভাইসে বা নিরাপদ স্থানে রাখতে পারবেন।',
+        'Save all থানা, ward, criteria, and entry data to a JSON file. Share '
+            'the file to another device or keep it somewhere safe.',
+      );
+  String get dataExportButton => _t('ডেটা এক্সপোর্ট করুন', 'Export data');
+  String get dataImportCardTitle => _t('ডেটা ইমপোর্ট (Restore)', 'Data import (Restore)');
+  String get dataImportCardBody => _t(
+        'পূর্বে এক্সপোর্ট করা একটি ব্যাকআপ (.json) ফাইল থেকে ডেটা ফিরিয়ে আনুন। '
+            'এটি অ্যাপের বর্তমান সকল ডেটা মুছে ব্যাকআপ দিয়ে প্রতিস্থাপন করবে। '
+            'ব্যাকআপের থানা যদি ক্লাউডে আগে থেকে না থাকে, ইমপোর্টের পর আপনি সাইন-ইন '
+            'থাকলে সেটি স্বয়ংক্রিয়ভাবে ক্লাউডে আপলোড হয়ে আপনি তার নির্মাতা হয়ে যাবেন।',
+        'Restore data from a previously exported backup (.json) file. This '
+            "will delete the app's current data and replace it with the "
+            "backup. If the backup's থানা doesn't already exist in the "
+            'cloud, it will be uploaded automatically and you will become its '
+            'creator, provided you are signed in after importing.',
+      );
+  String get dataImportButton => _t('ব্যাকআপ ফাইল বেছে নিন', 'Choose backup file');
+
+  // ---- services/backup_service.dart ----
+  String get backupShareText => _t('বাইতুলমাল কালেকশন ট্র্যাকার — ডেটা ব্যাকআপ', 'Baytulmal Collection Tracker — Data backup');
+  String get backupInvalidJson => _t('এটি একটি বৈধ JSON ফাইল নয়।', 'This is not a valid JSON file.');
+  String get backupInvalidFile => _t('এটি একটি বৈধ বাইতুলমাল ব্যাকআপ ফাইল নয়।', 'This is not a valid Baytulmal backup file.');
+  String backupMissingList(String key) =>
+      _t('ব্যাকআপ ফাইলের গঠন সঠিক নয় — "$key" তালিকা পাওয়া যায়নি।', 'Invalid backup file structure — "$key" list not found.');
+  String backupInvalidRow(String table) =>
+      _t('ব্যাকআপ ফাইলের "$table" তালিকায় অবৈধ সারি আছে।', 'The backup file\'s "$table" list contains an invalid row.');
+  String backupMissingField(String table, String field) => _t(
+        'ব্যাকআপ ফাইলের "$table" টেবিলে "$field" ফিল্ড অনুপস্থিত।',
+        'The backup file\'s "$table" table is missing the "$field" field.',
+      );
+  String backupInvalidUuid(String table) =>
+      _t('ব্যাকআপ ফাইলের "$table" টেবিলে অবৈধ uuid আছে।', 'The backup file\'s "$table" table has an invalid uuid.');
+  String backupDanglingReference(String table, String field) => _t(
+        'ব্যাকআপ ফাইলের "$table" টেবিলে একটি সারি অস্তিত্বহীন "$field" নির্দেশ করছে।',
+        'A row in the backup file\'s "$table" table references a non-existent "$field".',
+      );
 
   // ---- widgets/confirm_dialog.dart ----
   String get dialogProtisthanNameLabel => _t('থানার নাম', 'থানা name');

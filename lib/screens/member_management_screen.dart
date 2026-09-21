@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../l10n/strings.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
@@ -64,27 +65,26 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
   }
 
   Future<void> _addMember() async {
-    final result = await _showAddMemberDialog();
+    final s = Strings.of(context);
+    final result = await _showAddMemberDialog(s);
     if (result == null) return;
     final uid = await _cloud.findUidByEmail(result.email);
     if (!mounted) return;
     if (uid == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('এই ইমেইলে কোনো ব্যবহারকারী পাওয়া যায়নি — তাকে আগে একবার অ্যাপে সাইন-ইন করতে হবে।'),
-        ),
+        SnackBar(content: Text(s.memberNoUserFound)),
       );
       return;
     }
     await _cloud.addOrUpdateMember(widget.protisthan.uuid, uid, result.role, email: result.email);
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('সদস্য যোগ করা হয়েছে')),
+      SnackBar(content: Text(s.memberAdded)),
     );
     _load();
   }
 
-  Future<_AddMemberResult?> _showAddMemberDialog() {
+  Future<_AddMemberResult?> _showAddMemberDialog(Strings s) {
     final emailController = TextEditingController();
     var selectedRole = _assignableRoles.last;
     return showDialog<_AddMemberResult>(
@@ -93,7 +93,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
-              title: const Text('নতুন সদস্য যোগ করুন'),
+              title: Text(s.addMemberTitle),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -101,17 +101,17 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                     controller: emailController,
                     keyboardType: TextInputType.emailAddress,
                     maxLength: 254,
-                    decoration: const InputDecoration(
-                      labelText: 'ইমেইল',
+                    decoration: InputDecoration(
+                      labelText: s.memberEmailLabel,
                       hintText: 'user@example.com',
                     ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<ProtisthanRole>(
                     initialValue: selectedRole,
-                    decoration: const InputDecoration(labelText: 'রোল'),
+                    decoration: InputDecoration(labelText: s.memberRoleLabel),
                     items: _assignableRoles
-                        .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
+                        .map((r) => DropdownMenuItem(value: r, child: Text(s.roleLabel(r))))
                         .toList(),
                     onChanged: (r) => setDialogState(() => selectedRole = r ?? selectedRole),
                   ),
@@ -120,7 +120,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('বাতিল'),
+                  child: Text(s.cancel),
                 ),
                 FilledButton(
                   onPressed: () {
@@ -128,7 +128,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                     if (!_isValidEmail(email)) return;
                     Navigator.of(dialogContext).pop(_AddMemberResult(email, selectedRole));
                   },
-                  child: const Text('যোগ করুন'),
+                  child: Text(s.addButton),
                 ),
               ],
             );
@@ -139,6 +139,7 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
   }
 
   Future<void> _changeRole(Membership m) async {
+    final s = Strings.of(context);
     final options = _myRole == ProtisthanRole.creator
         ? ProtisthanRole.values.where((r) => r != ProtisthanRole.creator).toList()
         : [ProtisthanRole.collector, ProtisthanRole.member];
@@ -149,13 +150,13 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
         return StatefulBuilder(
           builder: (dialogContext, setDialogState) {
             return AlertDialog(
-              title: Text('${m.displayName ?? m.email ?? m.uid} — রোল পরিবর্তন'),
+              title: Text(s.memberChangeRoleTitle(m.displayName ?? m.email ?? m.uid)),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: options
                     .map(
                       (r) => RadioListTile<ProtisthanRole>(
-                        title: Text(r.label),
+                        title: Text(s.roleLabel(r)),
                         value: r,
                         // ignore: deprecated_member_use
                         groupValue: selected,
@@ -168,11 +169,11 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.of(dialogContext).pop(),
-                  child: const Text('বাতিল'),
+                  child: Text(s.cancel),
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(selected),
-                  child: const Text('সংরক্ষণ করুন'),
+                  child: Text(s.save),
                 ),
               ],
             );
@@ -192,10 +193,11 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
   }
 
   Future<void> _removeMember(Membership m) async {
+    final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
       context,
-      title: 'সদস্য বাদ দেবেন?',
-      message: '"${m.displayName ?? m.email ?? m.uid}" কে এই থানা থেকে বাদ দিলে তার আর এই থানায় প্রবেশাধিকার থাকবে না।',
+      title: s.memberRemoveTitle,
+      message: s.memberRemoveMessage(m.displayName ?? m.email ?? m.uid),
     );
     if (!confirmed) return;
     await _cloud.removeMember(widget.protisthan.uuid, m.uid);
@@ -204,15 +206,16 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final s = Strings.of(context);
     final canAdd = _myRole?.canManageUsers ?? false;
     return Scaffold(
-      appBar: AppBar(title: Text('সদস্য (${widget.protisthan.name})')),
+      appBar: AppBar(title: Text(s.memberManagementTitle(widget.protisthan.name))),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _members.isEmpty
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.group_outlined,
-                  message: 'কোনো সদস্য পাওয়া যায়নি।',
+                  message: s.emptyMembersMessage,
                 )
               : RefreshIndicator(
                   onRefresh: _load,
@@ -230,16 +233,16 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Chip(label: Text(m.role.label)),
+                              Chip(label: Text(s.roleLabel(m.role))),
                               if (manageable)
                                 PopupMenuButton<String>(
                                   onSelected: (value) {
                                     if (value == 'role') _changeRole(m);
                                     if (value == 'remove') _removeMember(m);
                                   },
-                                  itemBuilder: (context) => const [
-                                    PopupMenuItem(value: 'role', child: Text('রোল পরিবর্তন')),
-                                    PopupMenuItem(value: 'remove', child: Text('বাদ দিন')),
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(value: 'role', child: Text(s.memberChangeRoleMenuItem)),
+                                    PopupMenuItem(value: 'remove', child: Text(s.memberRemoveMenuItem)),
                                   ],
                                 ),
                             ],

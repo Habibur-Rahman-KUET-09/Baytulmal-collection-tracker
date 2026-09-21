@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../db/database_helper.dart';
+import '../l10n/strings.dart';
 
 const int kBackupSchemaVersion = 1;
 
@@ -34,19 +35,19 @@ class BackupService {
     return file;
   }
 
-  Future<void> exportAndShare() async {
+  Future<void> exportAndShare(Strings s) async {
     final file = await exportToFile();
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
-        text: 'বাইতুলমাল কালেকশন ট্র্যাকার — ডেটা ব্যাকআপ',
+        text: s.backupShareText,
       ),
     );
   }
 
   /// Opens a file picker for the user to choose a `.json` backup file.
   /// Returns null if the user cancelled.
-  Future<BackupPreview?> pickBackupFile() async {
+  Future<BackupPreview?> pickBackupFile(Strings s) async {
     final file = await FilePicker.pickFile(
       type: FileType.custom,
       allowedExtensions: ['json'],
@@ -61,18 +62,18 @@ class BackupService {
       if (parsed is! Map<String, dynamic>) throw const FormatException();
       decoded = parsed;
     } on FormatException {
-      throw const FormatException('এটি একটি বৈধ JSON ফাইল নয়।');
+      throw FormatException(s.backupInvalidJson);
     }
     if (decoded['data'] is! Map) {
-      throw const FormatException('এটি একটি বৈধ বাইতুলমাল ব্যাকআপ ফাইল নয়।');
+      throw FormatException(s.backupInvalidFile);
     }
     final data = Map<String, dynamic>.from(decoded['data'] as Map);
     for (final key in ['protisthan', 'criteria', 'ward', 'entry']) {
       if (data[key] is! List) {
-        throw FormatException('ব্যাকআপ ফাইলের গঠন সঠিক নয় — "$key" তালিকা পাওয়া যায়নি।');
+        throw FormatException(s.backupMissingList(key));
       }
     }
-    _validateRows(data);
+    _validateRows(data, s);
     return BackupPreview(
       data: data,
       protisthanCount: (data['protisthan'] as List).length,
@@ -94,10 +95,10 @@ class BackupService {
   /// file should fail loudly here rather than wiping local data and then
   /// crashing (or silently inserting orphaned rows) partway through
   /// [DatabaseHelper.importAllData].
-  void _validateRows(Map<String, dynamic> data) {
+  void _validateRows(Map<String, dynamic> data, Strings s) {
     List<Map> rows(String key) => (data[key] as List? ?? const [])
         .map((r) {
-          if (r is! Map) throw FormatException('ব্যাকআপ ফাইলের "$key" তালিকায় অবৈধ সারি আছে।');
+          if (r is! Map) throw FormatException(s.backupInvalidRow(key));
           return r;
         })
         .toList();
@@ -107,11 +108,11 @@ class BackupService {
       for (final r in rows) {
         for (final f in fields) {
           if (r[f] == null) {
-            throw FormatException('ব্যাকআপ ফাইলের "$table" টেবিলে "$f" ফিল্ড অনুপস্থিত।');
+            throw FormatException(s.backupMissingField(table, f));
           }
         }
         if (r['uuid'] is! String || (r['uuid'] as String).isEmpty) {
-          throw FormatException('ব্যাকআপ ফাইলের "$table" টেবিলে অবৈধ uuid আছে।');
+          throw FormatException(s.backupInvalidUuid(table));
         }
         ids.add(r['id']);
       }
@@ -121,7 +122,7 @@ class BackupService {
     void requireReference(List<Map> rows, String table, String field, Set<Object?> validIds) {
       for (final r in rows) {
         if (!validIds.contains(r[field])) {
-          throw FormatException('ব্যাকআপ ফাইলের "$table" টেবিলে একটি সারি অস্তিত্বহীন "$field" নির্দেশ করছে।');
+          throw FormatException(s.backupDanglingReference(table, field));
         }
       }
     }
