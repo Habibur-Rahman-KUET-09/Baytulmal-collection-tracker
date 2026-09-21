@@ -21,9 +21,13 @@ class DataManagementScreen extends StatefulWidget {
 class _DataManagementScreenState extends State<DataManagementScreen> {
   final _backupService = BackupService();
   bool _busy = false;
+  String? _statusText;
 
   Future<void> _export() async {
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _statusText = 'ব্যাকআপ ফাইল তৈরি হচ্ছে...';
+    });
     try {
       await _backupService.exportAndShare();
       if (mounted) {
@@ -42,11 +46,23 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
   }
 
   Future<void> _import() async {
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _statusText = 'ব্যাকআপ ফাইল পড়া ও যাচাই করা হচ্ছে...';
+    });
     try {
-      final preview = await _backupService.pickBackupFile();
+      final BackupPreview? preview;
+      try {
+        preview = await _backupService.pickBackupFile();
+      } on FormatException catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+        }
+        return;
+      }
       if (preview == null) return; // cancelled
       if (!mounted) return;
+      setState(() => _busy = false);
 
       final confirmed = await showConfirmDialog(
         context,
@@ -60,10 +76,16 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
             'এই কাজটি ফিরিয়ে নেওয়া যাবে না।',
         confirmLabel: 'প্রতিস্থাপন করুন',
       );
-      if (!confirmed) return;
+      if (!confirmed || !mounted) return;
 
+      setState(() {
+        _busy = true;
+        _statusText = 'স্থানীয়ভাবে প্রতিস্থাপন করা হচ্ছে...';
+      });
       await _backupService.restore(preview);
       if (!mounted) return;
+
+      setState(() => _statusText = 'ক্লাউডে সিঙ্ক করা হচ্ছে...');
       await context.read<AppDataProvider>().refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,6 +174,10 @@ class _DataManagementScreenState extends State<DataManagementScreen> {
             if (_busy) ...[
               const SizedBox(height: 24),
               const Center(child: CircularProgressIndicator()),
+              if (_statusText != null) ...[
+                const SizedBox(height: 12),
+                Center(child: Text(_statusText!, textAlign: TextAlign.center)),
+              ],
             ],
           ],
         ),

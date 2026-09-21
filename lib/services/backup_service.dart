@@ -55,16 +55,24 @@ class BackupService {
     if (path == null) return null;
 
     final content = await File(path).readAsString();
-    final decoded = jsonDecode(content);
-    if (decoded is! Map<String, dynamic> || decoded['data'] is! Map) {
+    final Map<String, dynamic> decoded;
+    try {
+      final parsed = jsonDecode(content);
+      if (parsed is! Map<String, dynamic>) throw const FormatException();
+      decoded = parsed;
+    } on FormatException {
+      throw const FormatException('এটি একটি বৈধ JSON ফাইল নয়।');
+    }
+    if (decoded['data'] is! Map) {
       throw const FormatException('এটি একটি বৈধ বাইতুলমাল ব্যাকআপ ফাইল নয়।');
     }
     final data = Map<String, dynamic>.from(decoded['data'] as Map);
     for (final key in ['protisthan', 'criteria', 'ward', 'entry']) {
       if (data[key] is! List) {
-        throw const FormatException('ব্যাকআপ ফাইলের গঠন সঠিক নয়।');
+        throw FormatException('ব্যাকআপ ফাইলের গঠন সঠিক নয় — "$key" তালিকা পাওয়া যায়নি।');
       }
     }
+    _validateRows(data);
     return BackupPreview(
       data: data,
       protisthanCount: (data['protisthan'] as List).length,
@@ -79,6 +87,66 @@ class BackupService {
   /// caller must confirm with the user first.
   Future<void> restore(BackupPreview preview) async {
     await _db.importAllData(preview.data);
+  }
+
+  /// Row-level structural + referential-integrity checks, run BEFORE
+  /// [restore] ever deletes anything — a truncated/hand-edited/corrupt
+  /// file should fail loudly here rather than wiping local data and then
+  /// crashing (or silently inserting orphaned rows) partway through
+  /// [DatabaseHelper.importAllData].
+  void _validateRows(Map<String, dynamic> data) {
+    List<Map> rows(String key) => (data[key] as List? ?? const [])
+        .map((r) {
+          if (r is! Map) throw FormatException('ব্যাকআপ ফাইলের "$key" তালিকায় অবৈধ সারি আছে।');
+          return r;
+        })
+        .toList();
+
+    Set<Object?> requireFields(List<Map> rows, String table, List<String> fields) {
+      final ids = <Object?>{};
+      for (final r in rows) {
+        for (final f in fields) {
+          if (r[f] == null) {
+            throw FormatException('ব্যাকআপ ফাইলের "$table" টেবিলে "$f" ফিল্ড অনুপস্থিত।');
+          }
+        }
+        if (r['uuid'] is! String || (r['uuid'] as String).isEmpty) {
+          throw FormatException('ব্যাকআপ ফাইলের "$table" টেবিলে অবৈধ uuid আছে।');
+        }
+        ids.add(r['id']);
+      }
+      return ids;
+    }
+
+    void requireReference(List<Map> rows, String table, String field, Set<Object?> validIds) {
+      for (final r in rows) {
+        if (!validIds.contains(r[field])) {
+          throw FormatException('ব্যাকআপ ফাইলের "$table" টেবিলে একটি সারি অস্তিত্বহীন "$field" নির্দেশ করছে।');
+        }
+      }
+    }
+
+    final protisthanRows = rows('protisthan');
+    final criteriaRows = rows('criteria');
+    final wardRows = rows('ward');
+    final entryRows = rows('entry');
+    final remittanceRows = data['remittance'] is List ? rows('remittance') : const <Map>[];
+
+    final protisthanIds = requireFields(protisthanRows, 'protisthan', ['id', 'name', 'created_at']);
+    final criteriaIds = requireFields(criteriaRows, 'criteria', ['id', 'protisthan_id', 'name', 'created_at']);
+    final wardIds = requireFields(wardRows, 'ward', ['id', 'protisthan_id', 'name', 'created_at']);
+    requireFields(entryRows, 'entry', ['id', 'ward_id', 'criteria_id', 'month', 'year', 'amount']);
+    if (remittanceRows.isNotEmpty) {
+      requireFields(remittanceRows, 'remittance', ['id', 'protisthan_id', 'month', 'year']);
+    }
+
+    requireReference(criteriaRows, 'criteria', 'protisthan_id', protisthanIds);
+    requireReference(wardRows, 'ward', 'protisthan_id', protisthanIds);
+    requireReference(entryRows, 'entry', 'ward_id', wardIds);
+    requireReference(entryRows, 'entry', 'criteria_id', criteriaIds);
+    if (remittanceRows.isNotEmpty) {
+      requireReference(remittanceRows, 'remittance', 'protisthan_id', protisthanIds);
+    }
   }
 }
 
