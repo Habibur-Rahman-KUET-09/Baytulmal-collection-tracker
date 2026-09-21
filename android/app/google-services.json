@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "626419471655-tpfln5cg7n9l0ef3mq57a5bq2rk08h6t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.baytulmal.collection_tracker",
+            "certificate_hash": "8900af7fadd053ff417faa03a5394f6e30341168"
+          }
+        },
+        {
           "client_id": "626419471655-ctdrq1vblm71teeqvp7nktn1fbr76mg9.apps.googleusercontent.com",
           "client_type": 3
         }
