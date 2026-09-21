@@ -105,9 +105,16 @@ class CloudSyncService {
   Future<ProtisthanRole?> getMyRole(String protisthanUuid) async {
     final uid = _uid;
     if (uid == null) return null;
-    final doc = await _protisthans.doc(protisthanUuid).collection('members').doc(uid).get();
-    if (!doc.exists) return null;
-    return roleFromString(doc.data()!['role'] as String? ?? 'member');
+    try {
+      final doc = await _protisthans.doc(protisthanUuid).collection('members').doc(uid).get();
+      if (!doc.exists) return null;
+      return roleFromString(doc.data()!['role'] as String? ?? 'member');
+    } on FirebaseException catch (e) {
+      // Rules deny reading another user's membership doc — treat as "not
+      // a member" rather than crashing the caller (see firestore.rules).
+      if (e.code == 'permission-denied') return null;
+      rethrow;
+    }
   }
 
   /// protisthanUuid -> my role, for every থানা the signed-in user belongs to.
@@ -119,8 +126,16 @@ class CloudSyncService {
   }
 
   Future<bool> protisthanExists(String protisthanUuid) async {
-    final doc = await _protisthans.doc(protisthanUuid).get();
-    return doc.exists;
+    try {
+      final doc = await _protisthans.doc(protisthanUuid).get();
+      return doc.exists;
+    } on FirebaseException catch (e) {
+      // Rules deny reading a থানা that exists under someone else and
+      // this user isn't a member of — safest reading is "yes, it exists
+      // (just not ours to claim)" rather than crashing the caller.
+      if (e.code == 'permission-denied') return true;
+      rethrow;
+    }
   }
 
   // -----------------------------------------------------------------------

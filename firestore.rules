@@ -59,7 +59,13 @@ service cloud.firestore {
     }
 
     match /protisthans/{protisthanId} {
-      allow read: if isMember(protisthanId);
+      // A signed-in user must be able to check "does this uuid already
+      // exist in Firestore?" (CloudSyncService.protisthanExists) BEFORE
+      // they are a member of it — that's exactly the claim/create
+      // bootstrap path (a brand-new থানা, or claiming pre-Firebase local
+      // data). `resource == null` means the doc doesn't exist yet, so
+      // this only ever exposes "not found", never another user's data.
+      allow read: if isMember(protisthanId) || (isSignedIn() && resource == null);
       // Creating a brand-new থানা: any signed-in user, but only as their
       // own ownerUid (checked against the document being written, since
       // no members/ doc exists yet to check a role against).
@@ -68,7 +74,11 @@ service cloud.firestore {
       allow delete: if hasRole(protisthanId, ['creator']);
 
       match /members/{memberUid} {
-        allow read: if isMember(protisthanId);
+        // Same bootstrap need as above: a user must be able to read
+        // their OWN membership doc (CloudSyncService.getMyRole) to find
+        // out they're NOT a member yet, before they can become one.
+        // This never exposes another user's membership doc.
+        allow read: if isMember(protisthanId) || (isSignedIn() && request.auth.uid == memberUid);
         allow write: if hasRole(protisthanId, ['creator', 'admin']) ||
           (request.auth.uid == memberUid && request.resource.data.role == 'creator' && isOwner(protisthanId));
       }
