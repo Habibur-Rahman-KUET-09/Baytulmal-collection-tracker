@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/strings.dart';
 import '../../services/auth_service.dart';
+import '../../services/rate_limiter_service.dart';
 import '../../utils/safe_padding.dart';
 
 /// লগইন/নিবন্ধন — ইমেইল/পাসওয়ার্ড ও Google দুই পদ্ধতিতেই সাইন-ইন করা যায়।
@@ -67,16 +68,46 @@ class _LoginScreenState extends State<LoginScreen> {
     setState(() => _submitting = true);
     final email = _emailController.text.trim();
     final password = _passwordController.text;
+
+    // Check for account lockout on login attempts (not signup)
+    if (!_isSignUp) {
+      final isLockedOut = await RateLimiterService.instance.isLockedOut(email);
+      if (isLockedOut) {
+        if (!mounted) return;
+        final remaining = await RateLimiterService.instance.getRemainingLockoutMinutes(email);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.loginAccountLockedOut(remaining))),
+        );
+        setState(() => _submitting = false);
+        return;
+      }
+    }
+
     try {
       if (_isSignUp) {
         await AuthService.instance.signUpWithEmail(email: email, password: password);
       } else {
         await AuthService.instance.signInWithEmail(email: email, password: password);
       }
+      // Clear failed attempts on successful login
+      if (!_isSignUp) {
+        await RateLimiterService.instance.clearFailedAttempts(email);
+      }
       // On success, AuthGate's authStateChanges listener takes over — no
       // manual navigation needed here.
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
+      // Track failed attempts on login failure (not signup)
+      if (!_isSignUp) {
+        final shouldLock = await RateLimiterService.instance.recordFailedAttempt(email);
+        if (shouldLock) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.loginTooManyAttempts)),
+          );
+          setState(() => _submitting = false);
+          return;
+        }
+      }
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
     } finally {
       if (mounted) setState(() => _submitting = false);
@@ -106,14 +137,20 @@ class _LoginScreenState extends State<LoginScreen> {
     }
     try {
       await AuthService.instance.sendPasswordResetEmail(email);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.loginResetLinkSent(email))),
-      );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
+      // Show error only for actual errors (invalid email, etc.)
+      if (e.code == 'invalid-email') {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(_friendlyError(s, e))));
+        return;
+      }
+      // For user-not-found and other cases, don't reveal if email exists
     }
+    // Always show the same generic success message to prevent email enumeration
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(s.loginResetLinkSent)),
+    );
   }
 
   String? _validateEmail(Strings s, String? value) {

@@ -346,7 +346,8 @@ class Strings {
   String get loginPasswordNeedsDigit => _t('অন্তত একটি সংখ্যা দিন', 'Include at least one digit');
   String get loginPasswordMismatch => _t('পাসওয়ার্ড মিলছে না', 'Passwords do not match');
   String get loginEnterEmailFirst => _t('আগে ইমেইল ঠিকানা লিখুন', 'Enter your email address first');
-  String loginResetLinkSent(String email) =>
+  String get loginResetLinkSent => _t('যদি এই ইমেইলে অ্যাকাউন্ট থাকে তাহলে পাসওয়ার্ড রিসেট লিংক পাঠানো হবে', 'If an account exists with this email, a password reset link will be sent');
+  String loginResetLinkSentWithEmail(String email) =>
       _t('$email-এ পাসওয়ার্ড রিসেট লিংক পাঠানো হয়েছে', 'Password reset link sent to $email');
   String get loginErrorInvalidEmail => _t('ইমেইল ঠিকানাটি সঠিক নয়।', 'That email address is invalid.');
   String get loginErrorUserDisabled => _t('এই অ্যাকাউন্টটি নিষ্ক্রিয় করা হয়েছে।', 'This account has been disabled.');
@@ -361,6 +362,10 @@ class Strings {
   String get loginErrorTooManyRequests =>
       _t('অনেকবার চেষ্টা করা হয়েছে — একটু পর আবার চেষ্টা করুন।', 'Too many attempts — try again shortly.');
   String get loginErrorGeneric => _t('একটি সমস্যা হয়েছে, আবার চেষ্টা করুন।', 'Something went wrong — try again.');
+  String get loginTooManyAttempts =>
+      _t('অনেক পাসওয়ার্ড ভুল দেওয়া হয়েছে। অ্যাকাউন্ট ১৫ মিনিটের জন্য লক করা হয়েছে।', 'Too many failed attempts. Account locked for 15 minutes.');
+  String loginAccountLockedOut(int minutes) =>
+      _t('অ্যাকাউন্ট লক করা আছে। $minutes মিনিট পর আবার চেষ্টা করুন।', 'Account is locked. Try again in $minutes minutes.');
   String loginGoogleSignInFailed(String error) =>
       _t('Google সাইন-ইন ব্যর্থ হয়েছে: $error', 'Google sign-in failed: $error');
   String get loginErrorMissingGoogleToken =>
