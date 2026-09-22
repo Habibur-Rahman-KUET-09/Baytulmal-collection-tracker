@@ -73,7 +73,23 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
     final result = await _showAddMemberDialog(s);
     if (result == null) return;
     try {
-      await _cloud.addOrUpdateMember(widget.protisthan.uuid, result.uid, result.role, email: result.email);
+      if (result.isNewUser) {
+        // Create invitation for new user
+        await _cloud.inviteNewMember(
+          widget.protisthan.uuid,
+          result.email!,
+          result.displayName!,
+          result.role,
+        );
+      } else {
+        // Add existing user
+        await _cloud.addOrUpdateMember(
+          widget.protisthan.uuid,
+          result.uid!,
+          result.role,
+          email: result.email,
+        );
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.memberAdded)),
@@ -89,7 +105,10 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
 
   Future<_AddMemberResult?> _showAddMemberDialog(Strings s) {
     final searchController = TextEditingController();
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
     var selectedRole = _assignableRoles.last;
+    bool isInviteMode = false;
     List<(String uid, String? email, String? displayName)> searchResults = [];
     String? selectedUid;
 
@@ -105,55 +124,93 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    TextField(
-                      controller: searchController,
-                      keyboardType: TextInputType.emailAddress,
-                      maxLength: 254,
-                      decoration: InputDecoration(
-                        labelText: s.memberEmailLabel,
-                        hintText: 'user@example.com',
-                      ),
-                      onChanged: (query) async {
-                        if (query.trim().isEmpty) {
-                          setDialogState(() {
-                            searchResults = [];
-                            selectedUid = null;
-                          });
-                          return;
-                        }
-                        final results = await _cloud.searchUsers(query);
+                    SegmentedButton<bool>(
+                      segments: [
+                        ButtonSegment(value: false, label: Text(s.memberSearchExisting ?? 'খুঁজুন')),
+                        ButtonSegment(value: true, label: Text(s.memberInviteNew ?? 'আমন্ত্রণ জানান')),
+                      ],
+                      selected: {isInviteMode},
+                      onSelectionChanged: (selected) {
                         setDialogState(() {
-                          searchResults = results;
-                          selectedUid = results.isNotEmpty ? results.first.$1 : null;
+                          isInviteMode = selected.first;
+                          searchController.clear();
+                          nameController.clear();
+                          emailController.clear();
+                          searchResults = [];
+                          selectedUid = null;
                         });
                       },
                     ),
-                    const SizedBox(height: 12),
-                    if (searchController.text.trim().isNotEmpty)
-                      Flexible(
-                        child: searchResults.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                child: Text(s.memberNoUserFound, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error)),
-                              )
-                            : ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: searchResults.length,
-                                itemBuilder: (ctx, idx) {
-                                  final (uid, email, displayName) = searchResults[idx];
-                                  return ListTile(
-                                    title: Text(displayName?.isNotEmpty == true ? displayName! : (email ?? uid)),
-                                    subtitle: email != null ? Text(email) : null,
-                                    trailing: Radio<String>(
-                                      value: uid,
-                                      groupValue: selectedUid,
-                                      onChanged: (v) => setDialogState(() => selectedUid = v),
-                                    ),
-                                    onTap: () => setDialogState(() => selectedUid = uid),
-                                  );
-                                },
-                              ),
+                    const SizedBox(height: 16),
+                    if (!isInviteMode) ...[
+                      TextField(
+                        controller: searchController,
+                        keyboardType: TextInputType.emailAddress,
+                        maxLength: 254,
+                        decoration: InputDecoration(
+                          labelText: s.memberEmailLabel,
+                          hintText: 'user@example.com',
+                        ),
+                        onChanged: (query) async {
+                          if (query.trim().isEmpty) {
+                            setDialogState(() {
+                              searchResults = [];
+                              selectedUid = null;
+                            });
+                            return;
+                          }
+                          final results = await _cloud.searchUsers(query);
+                          setDialogState(() {
+                            searchResults = results;
+                            selectedUid = results.isNotEmpty ? results.first.$1 : null;
+                          });
+                        },
                       ),
+                      const SizedBox(height: 12),
+                      if (searchController.text.trim().isNotEmpty)
+                        Flexible(
+                          child: searchResults.isEmpty
+                              ? Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  child: Text(s.memberNoUserFound, style: TextStyle(color: Theme.of(dialogContext).colorScheme.error)),
+                                )
+                              : ListView.builder(
+                                  shrinkWrap: true,
+                                  itemCount: searchResults.length,
+                                  itemBuilder: (ctx, idx) {
+                                    final (uid, email, displayName) = searchResults[idx];
+                                    return ListTile(
+                                      title: Text(displayName?.isNotEmpty == true ? displayName! : (email ?? uid)),
+                                      subtitle: email != null ? Text(email) : null,
+                                      trailing: Radio<String>(
+                                        value: uid,
+                                        groupValue: selectedUid,
+                                        onChanged: (v) => setDialogState(() => selectedUid = v),
+                                      ),
+                                      onTap: () => setDialogState(() => selectedUid = uid),
+                                    );
+                                  },
+                                ),
+                        ),
+                    ] else ...[
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: s.memberNameLabel ?? 'নাম',
+                          hintText: 'সদস্যের নাম',
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        maxLength: 254,
+                        decoration: InputDecoration(
+                          labelText: s.memberEmailLabel,
+                          hintText: 'user@example.com',
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 12),
                     DropdownButtonFormField<ProtisthanRole>(
                       initialValue: selectedRole,
@@ -172,12 +229,24 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
                   child: Text(s.cancel),
                 ),
                 FilledButton(
-                  onPressed: selectedUid != null
-                      ? () {
-                          final selected = searchResults.firstWhere((r) => r.$1 == selectedUid);
-                          Navigator.of(dialogContext).pop(_AddMemberResult(selectedUid!, selected.$2, selectedRole));
-                        }
-                      : null,
+                  onPressed: isInviteMode
+                      ? (nameController.text.trim().isNotEmpty && emailController.text.trim().isNotEmpty)
+                          ? () {
+                              Navigator.of(dialogContext).pop(
+                                _AddMemberResult.forNewUser(
+                                  emailController.text.trim(),
+                                  nameController.text.trim(),
+                                  selectedRole,
+                                ),
+                              );
+                            }
+                          : null
+                      : selectedUid != null
+                          ? () {
+                              final selected = searchResults.firstWhere((r) => r.$1 == selectedUid);
+                              Navigator.of(dialogContext).pop(_AddMemberResult(selectedUid!, selected.$2, selectedRole));
+                            }
+                          : null,
                   child: Text(s.addButton),
                 ),
               ],
@@ -310,8 +379,17 @@ class _MemberManagementScreenState extends State<MemberManagementScreen> {
 }
 
 class _AddMemberResult {
-  final String uid;
+  final String? uid;
   final String? email;
+  final String? displayName;
   final ProtisthanRole role;
-  const _AddMemberResult(this.uid, this.email, this.role);
+  final bool isNewUser;
+
+  const _AddMemberResult(this.uid, this.email, this.role)
+      : displayName = null,
+        isNewUser = false;
+
+  const _AddMemberResult.forNewUser(this.email, this.displayName, this.role)
+      : uid = null,
+        isNewUser = true;
 }

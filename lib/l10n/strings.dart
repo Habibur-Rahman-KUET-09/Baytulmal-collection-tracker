@@ -139,6 +139,9 @@ class Strings {
       );
   String get memberChangeRoleMenuItem => _t('রোল পরিবর্তন', 'Change role');
   String get memberRemoveMenuItem => _t('বাদ দিন', 'Remove');
+  String get memberSearchExisting => _t('খুঁজুন', 'Search');
+  String get memberInviteNew => _t('আমন্ত্রণ জানান', 'Invite');
+  String get memberNameLabel => _t('সদস্যের নাম', 'Member name');
 
   String roleLabel(ProtisthanRole role) {
     switch (role) {

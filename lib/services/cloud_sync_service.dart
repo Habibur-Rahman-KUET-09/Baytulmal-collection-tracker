@@ -113,6 +113,43 @@ class CloudSyncService {
     await batch.commit();
   }
 
+  /// Invite a new user (not yet signed up) to a protisthan by email.
+  /// Stores invitation with displayName so they can see it when they sign up.
+  Future<void> inviteNewMember(
+    String protisthanUuid,
+    String email,
+    String displayName,
+    ProtisthanRole role,
+  ) async {
+    final normalizedEmail = email.trim().toLowerCase();
+    final createdAt = DateTime.now().toIso8601String();
+
+    // Store invitation in protisthan's invitations subcollection
+    await _protisthans
+        .doc(protisthanUuid)
+        .collection('invitations')
+        .doc(normalizedEmail)
+        .set({
+          'email': normalizedEmail,
+          'displayName': displayName,
+          'role': role.name,
+          'createdAt': createdAt,
+          'status': 'pending',
+        });
+
+    // Also store in a global invitations index for quick lookup during signup
+    await _fs.collection('invitations').doc(normalizedEmail).set(
+      {
+        'email': normalizedEmail,
+        'displayName': displayName,
+        'protisthanUuid': protisthanUuid,
+        'role': role.name,
+        'createdAt': createdAt,
+      },
+      SetOptions(merge: true),
+    );
+  }
+
   Future<List<Membership>> getMembers(String protisthanUuid) async {
     final snap = await _protisthans.doc(protisthanUuid).collection('members').get();
     return snap.docs.map((d) => Membership.fromFirestore(d.id, d.data())).toList();
