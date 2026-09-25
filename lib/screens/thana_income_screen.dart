@@ -88,7 +88,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     for (final c in [incomeCriteria, ...normalCriteria]) {
       final value = existing[c.id];
       _controllers[c.id!] = TextEditingController(
-        text: value == null ? '' : _trimZero(value),
+        text: value == null ? '' : NumberInput.editable(value),
       );
     }
 
@@ -102,10 +102,6 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     });
   }
 
-  String _trimZero(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
-  }
 
   Future<void> _onMonthChanged(DateTime picked) async {
     setState(() {

@@ -59,6 +59,7 @@ Future<String?> showNameInputDialog(
           controller: controller,
           autofocus: true,
           maxLength: 100,
+              buildCounter: _localizedCounter,
           decoration: InputDecoration(labelText: label ?? s.name, hintText: hintText),
           validator: (v) => (v == null || v.trim().isEmpty) ? s.nameRequired : null,
           textInputAction: TextInputAction.done,
@@ -106,7 +107,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
   final s = Strings.of(context);
   final nameCtrl = TextEditingController(text: initialName ?? '');
   final nisabCtrl = TextEditingController(
-    text: initialNisab == 0 ? '' : _trimZero(initialNisab),
+    text: initialNisab == 0 ? '' : NumberInput.editable(initialNisab),
   );
   final formKey = GlobalKey<FormState>();
 
@@ -123,6 +124,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
               controller: nameCtrl,
               autofocus: true,
               maxLength: 100,
+              buildCounter: _localizedCounter,
               decoration: InputDecoration(labelText: s.dialogProtisthanNameLabel),
               textInputAction: TextInputAction.next,
               validator: (v) => (v == null || v.trim().isEmpty) ? s.nameRequired : null,
@@ -135,6 +137,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
                 helperText: s.dialogNisabHelperShort,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: NumberInput.formatters,
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
@@ -187,7 +190,7 @@ Future<WardInputResult?> showWardInputDialog(
   final s = Strings.of(context);
   final nameCtrl = TextEditingController(text: initialName ?? '');
   final targetCtrl = TextEditingController(
-    text: initialTargetAmount == 0 ? '' : _trimZero(initialTargetAmount),
+    text: initialTargetAmount == 0 ? '' : NumberInput.editable(initialTargetAmount),
   );
   final formKey = GlobalKey<FormState>();
 
@@ -204,6 +207,7 @@ Future<WardInputResult?> showWardInputDialog(
               controller: nameCtrl,
               autofocus: true,
               maxLength: 100,
+              buildCounter: _localizedCounter,
               decoration: InputDecoration(labelText: s.dialogWardNameLabel),
               textInputAction: TextInputAction.next,
               validator: (v) => (v == null || v.trim().isEmpty) ? s.nameRequired : null,
@@ -217,6 +221,7 @@ Future<WardInputResult?> showWardInputDialog(
                 helperMaxLines: 2,
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: NumberInput.formatters,
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
@@ -251,7 +256,15 @@ Future<WardInputResult?> showWardInputDialog(
   return result;
 }
 
-String _trimZero(double value) {
-  if (value == value.roundToDouble()) return value.toInt().toString();
-  return value.toString();
+/// "৫/১০০" with বাংলা selected, "5/100" in English.
+Widget? _localizedCounter(
+  BuildContext context, {
+  required int currentLength,
+  required bool isFocused,
+  required int? maxLength,
+}) {
+  return Text(
+    NumberInput.localize('$currentLength/$maxLength'),
+    style: Theme.of(context).textTheme.bodySmall,
+  );
 }

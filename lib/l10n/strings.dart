@@ -369,7 +369,7 @@ class Strings {
   String get loginTooManyAttempts =>
       _t('অনেক পাসওয়ার্ড ভুল দেওয়া হয়েছে। অ্যাকাউন্ট ১৫ মিনিটের জন্য লক করা হয়েছে।', 'Too many failed attempts. Account locked for 15 minutes.');
   String loginAccountLockedOut(int minutes) =>
-      _t('অ্যাকাউন্ট লক করা আছে। $minutes মিনিট পর আবার চেষ্টা করুন।', 'Account is locked. Try again in $minutes minutes.');
+      _t('অ্যাকাউন্ট লক করা আছে। ${BanglaMonths.toBanglaDigits(minutes)} মিনিট পর আবার চেষ্টা করুন।', 'Account is locked. Try again in $minutes minutes.');
   String loginGoogleSignInFailed(String error) =>
       _t('Google সাইন-ইন ব্যর্থ হয়েছে: $error', 'Google sign-in failed: $error');
   String get loginErrorMissingGoogleToken =>

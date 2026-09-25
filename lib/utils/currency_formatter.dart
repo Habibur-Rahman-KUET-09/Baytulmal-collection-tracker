@@ -1,6 +1,8 @@
+import 'number_input.dart';
+
 /// Formats BDT amounts using Bangladeshi digit grouping (last 3 digits,
-/// then groups of 2 — e.g. 142500 -> "1,42,500") with Arabic numerals, as
-/// recommended by the SRS (section 1.4) for reliable calculation display.
+/// then groups of 2 — e.g. 142500 -> "1,42,500"), in the app language's
+/// digits: "৳ ১,৪২,৫০০" with বাংলা selected, "৳ 1,42,500" in English.
 class CurrencyFormatter {
   static String format(num amount, {bool withSymbol = true}) {
     final isNegative = amount < 0;
@@ -13,13 +15,9 @@ class CurrencyFormatter {
         : '';
     final sign = isNegative ? '-' : '';
     final symbol = withSymbol ? '৳ ' : '';
-    return '$sign$symbol$grouped$fraction';
+    return NumberInput.localize('$sign$symbol$grouped$fraction');
   }
 
-  /// "১৮,০০০" style display is intentionally not used app-wide; SRS
-  /// recommends Arabic numerals for reliable calculation display. This
-  /// helper is kept for report headers that want the visual convention
-  /// shown in the wireframes.
   static String _groupBangladeshi(String digits) {
     if (digits.length <= 3) return digits;
     final lastThree = digits.substring(digits.length - 3);

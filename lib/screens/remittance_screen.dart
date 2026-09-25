@@ -53,7 +53,6 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
     super.dispose();
   }
 
-  String _trimZero(double v) => v == v.roundToDouble() ? v.toInt().toString() : v.toString();
 
   Future<void> _load() async {
     setState(() => _loading = true);
@@ -65,7 +64,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
       _actualDepositTotal = wardTotal + thanaDeposit;
       _expenseCtrl.text = remittance == null || remittance.expenseAmount == 0
           ? ''
-          : _trimZero(remittance.expenseAmount);
+          : NumberInput.editable(remittance.expenseAmount);
       _existingActualDepositAmount = remittance?.actualDepositAmount ?? 0;
       _loading = false;
     });

@@ -81,7 +81,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       if (c.hasNoEntry) continue; // ধার্যকৃত নিসাব/বাস্তব জমা — কোনো Entry নেই
       final value = existing[c.id];
       _controllers[c.id!] = TextEditingController(
-        text: value == null ? '' : _trimZero(value),
+        text: value == null ? '' : NumberInput.editable(value),
       );
     }
 
@@ -92,10 +92,6 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     });
   }
 
-  String _trimZero(double v) {
-    if (v == v.roundToDouble()) return v.toInt().toString();
-    return v.toString();
-  }
 
   Future<void> _onMonthChanged(DateTime picked) async {
     setState(() {
