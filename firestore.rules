@@ -7,8 +7,8 @@ rules_version = '2';
 //     memberships/{protisthanId}             {role, joinedAt}   (reverse index)
 //   protisthans/{protisthanId}               {name, createdAt, ownerUid}
 //     members/{authUid}                      {email, displayName, role, joinedAt}
-//     wards/{wardId}                         {name, createdAt, targetAmount, isThanaWard}
-//     criteria/{criteriaId}                  {name, createdAt, specialOrder}
+//     wards/{wardId}                         {name, createdAt, targetAmount, isThanaWard, sortOrder}
+//     criteria/{criteriaId}                  {name, createdAt, specialOrder, sortOrder}
 //     entries/{entryId}                      {wardUuid, criteriaUuid, month, year, amount, updatedAt}
 //     remittances/{remittanceId}             {month, year, expenseAmount, actualDepositAmount, updatedAt}
 //

@@ -9,6 +9,7 @@ import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/drag_handle.dart';
 import '../widgets/empty_state.dart';
 
 /// Screen 4: খাত ম্যানেজমেন্ট (CRUD list) — FR-2.1 .. FR-2.5.
@@ -82,6 +83,55 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
     }
   }
 
+  // Special criteria stay first in their fixed order; only normal ones move.
+  List<Criteria> get _special => _criteria.where((c) => c.isSpecial).toList();
+  List<Criteria> get _normal => _criteria.where((c) => !c.isSpecial).toList();
+
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    final normal = _normal;
+    normal.insert(newIndex, normal.removeAt(oldIndex));
+    setState(() => _criteria = [
+          ..._special,
+          for (var i = 0; i < normal.length; i++) normal[i].copyWith(sortOrder: i),
+        ]);
+    await context.read<AppDataProvider>().reorderCriteria(widget.protisthan, normal);
+  }
+
+  Widget _criteriaCard(Criteria c, {required bool canManage, int? dragIndex}) {
+    final s = Strings.of(context);
+    return Card(
+      key: ValueKey(c.uuid),
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListTile(
+        contentPadding: dragIndex != null ? const EdgeInsets.only(left: 4, right: 8) : null,
+        leading: dragIndex != null ? DragHandle(index: dragIndex, tooltip: s.dragToReorder) : null,
+        title: Text(c.name),
+        subtitle: c.isSpecial
+            ? Text(
+                s.specialCriteriaNote,
+                style: const TextStyle(fontSize: 11.5),
+              )
+            : null,
+        trailing: !canManage
+            ? null
+            : Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined),
+                    onPressed: () => _rename(c),
+                  ),
+                  if (!c.isSpecial)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline),
+                      onPressed: () => _delete(c),
+                    ),
+                ],
+              ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = Strings.of(context);
@@ -96,40 +146,27 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                   icon: Icons.category_outlined,
                   message: s.emptyCriteriaMessage,
                 )
-              : ListView.builder(
-                  padding: safeBodyPadding(context, amount: 12, fab: canManage),
-                  itemCount: _criteria.length,
-                  itemBuilder: (context, index) {
-                    final c = _criteria[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 4),
-                      child: ListTile(
-                        title: Text(c.name),
-                        subtitle: c.isSpecial
-                            ? Text(
-                                s.specialCriteriaNote,
-                                style: const TextStyle(fontSize: 11.5),
-                              )
-                            : null,
-                        trailing: !canManage
-                            ? null
-                            : Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined),
-                                    onPressed: () => _rename(c),
-                                  ),
-                                  if (!c.isSpecial)
-                                    IconButton(
-                                      icon: const Icon(Icons.delete_outline),
-                                      onPressed: () => _delete(c),
-                                    ),
-                                ],
-                              ),
+              : CustomScrollView(
+                  slivers: [
+                    SliverPadding(
+                      padding: safeBodyPadding(context, amount: 12, fab: canManage).copyWith(bottom: 0),
+                      sliver: SliverList.list(
+                        children: [for (final c in _special) _criteriaCard(c, canManage: canManage)],
                       ),
-                    );
-                  },
+                    ),
+                    SliverPadding(
+                      padding: safeBodyPadding(context, amount: 12, fab: canManage).copyWith(top: 0),
+                      sliver: SliverReorderableList(
+                        itemCount: _normal.length,
+                        onReorderItem: _reorder,
+                        itemBuilder: (context, index) => _criteriaCard(
+                          _normal[index],
+                          canManage: canManage,
+                          dragIndex: canManage ? index : null,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
       floatingActionButton: canManage
           ? FloatingActionButton(onPressed: _add, child: const Icon(Icons.add))

@@ -8,6 +8,7 @@ import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/drag_handle.dart';
 import '../widgets/empty_state.dart';
 import 'account_screen.dart';
 import 'data_management_screen.dart';
@@ -103,9 +104,15 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                 )
               : RefreshIndicator(
                   onRefresh: provider.refresh,
-                  child: ListView.builder(
+                  child: ReorderableListView.builder(
                     padding: safeBodyPadding(context, amount: 12, fab: true),
+                    buildDefaultDragHandles: false,
                     itemCount: provider.protisthanList.length,
+                    onReorderItem: (oldIndex, newIndex) {
+                      final list = [...provider.protisthanList];
+                      list.insert(newIndex, list.removeAt(oldIndex));
+                      provider.reorderProtisthans(list);
+                    },
                     itemBuilder: (context, index) {
                       final p = provider.protisthanList[index];
                       final wardCount = provider.wardCounts[p.id] ?? 0;
@@ -114,8 +121,11 @@ class _ProtisthanListScreenState extends State<ProtisthanListScreen> {
                       final canEdit = role?.canManageStructure ?? false;
                       final canDelete = role?.canDeleteProtisthan ?? false;
                       return Card(
+                        key: ValueKey(p.uuid),
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
+                          contentPadding: const EdgeInsets.only(left: 4, right: 4),
+                          leading: DragHandle(index: index, tooltip: s.dragToReorder),
                           title: Text(p.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(s.homeWardCriteriaCount(wardCount, criteriaCount)),
                           trailing: PopupMenuButton<String>(

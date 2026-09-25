@@ -21,6 +21,11 @@ class Ward {
   /// report as a distinct "থানা" row instead of a normal ward row.
   final bool isThanaWard;
 
+  /// Position in its list when the user drags items into their own order
+  /// (0 first). Null for rows that were never placed — they follow the
+  /// ordered ones, alphabetically. Shared by every member of the থানা.
+  final int? sortOrder;
+
   const Ward({
     this.id,
     required this.uuid,
@@ -29,6 +34,7 @@ class Ward {
     required this.createdAt,
     this.targetAmount = 0,
     this.isThanaWard = false,
+    this.sortOrder,
   });
 
   Ward copyWith({
@@ -39,6 +45,7 @@ class Ward {
     String? createdAt,
     double? targetAmount,
     bool? isThanaWard,
+    int? sortOrder,
   }) {
     return Ward(
       id: id ?? this.id,
@@ -48,6 +55,7 @@ class Ward {
       createdAt: createdAt ?? this.createdAt,
       targetAmount: targetAmount ?? this.targetAmount,
       isThanaWard: isThanaWard ?? this.isThanaWard,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -60,6 +68,7 @@ class Ward {
       'created_at': createdAt,
       'target_amount': targetAmount,
       'is_thana_ward': isThanaWard ? 1 : 0,
+      'sort_order': sortOrder,
     };
   }
 
@@ -72,6 +81,7 @@ class Ward {
       createdAt: map['created_at'] as String,
       targetAmount: (map['target_amount'] as num?)?.toDouble() ?? 0,
       isThanaWard: (map['is_thana_ward'] as int?) == 1,
+      sortOrder: map['sort_order'] as int?,
     );
   }
 }

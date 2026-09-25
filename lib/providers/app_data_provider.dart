@@ -209,11 +209,12 @@ class AppDataProvider extends ChangeNotifier {
   }
 
   Future<void> renameCriteria(Criteria c, String newName) async {
-    final updated = c.copyWith(name: newName);
-    await db.updateCriteria(updated);
+    await db.updateCriteria(c.copyWith(name: newName));
     if (_uid != null) {
       final p = await db.getProtisthan(c.protisthanId);
-      if (p != null) await cloud.pushCriteria(p.uuid, updated);
+      // Push the stored row: [c] may predate a reorder.
+      final fresh = await db.getCriteriaById(c.id!);
+      if (p != null && fresh != null) await cloud.pushCriteria(p.uuid, fresh);
     }
     await _refreshLocalView();
   }
@@ -248,11 +249,12 @@ class AppDataProvider extends ChangeNotifier {
   }
 
   Future<void> updateWardInfo(Ward w, {required String name, required double targetAmount}) async {
-    final updated = w.copyWith(name: name, targetAmount: targetAmount);
-    await db.updateWard(updated);
+    await db.updateWard(w.copyWith(name: name, targetAmount: targetAmount));
     if (_uid != null) {
       final p = await db.getProtisthan(w.protisthanId);
-      if (p != null) await cloud.pushWard(p.uuid, updated);
+      // Push the stored row: [w] may predate a reorder.
+      final fresh = await db.getWard(w.id!);
+      if (p != null && fresh != null) await cloud.pushWard(p.uuid, fresh);
     }
     await _refreshLocalView();
   }
@@ -265,6 +267,38 @@ class AppDataProvider extends ChangeNotifier {
       if (p != null) await cloud.deleteWardCloud(p.uuid, w.uuid);
     }
     await _refreshLocalView();
+  }
+
+  /// The home list in the order the user dragged it into. Kept on this
+  /// device only: each member belongs to a different set of থানা.
+  Future<void> reorderProtisthans(List<Protisthan> ordered) async {
+    protisthanList = [
+      for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i),
+    ];
+    notifyListeners();
+    await db.saveSortOrder('protisthan', [for (final p in ordered) p.id!]);
+  }
+
+  /// Saves a থানা's wards in the dragged order, for every member.
+  Future<void> reorderWards(Protisthan protisthan, List<Ward> ordered) async {
+    await db.saveSortOrder('ward', [for (final w in ordered) w.id!]);
+    if (_uid != null) {
+      await cloud.pushSortOrder(protisthan.uuid, 'wards', {
+        for (var i = 0; i < ordered.length; i++) ordered[i].uuid: i,
+      });
+    }
+  }
+
+  /// Saves a থানা's normal criteria in the dragged order, for every member
+  /// (special criteria always stay first, in their fixed order).
+  Future<void> reorderCriteria(Protisthan protisthan, List<Criteria> ordered) async {
+    assert(ordered.every((c) => !c.isSpecial));
+    await db.saveSortOrder('criteria', [for (final c in ordered) c.id!]);
+    if (_uid != null) {
+      await cloud.pushSortOrder(protisthan.uuid, 'criteria', {
+        for (var i = 0; i < ordered.length; i++) ordered[i].uuid: i,
+      });
+    }
   }
 
   /// Saves (or, if [amount] is null, deletes) a single entry and mirrors

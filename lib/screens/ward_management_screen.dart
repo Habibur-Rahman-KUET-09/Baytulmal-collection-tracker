@@ -10,6 +10,7 @@ import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
+import '../widgets/drag_handle.dart';
 import '../widgets/empty_state.dart';
 
 /// Screen 5: ওয়ার্ড ম্যানেজমেন্ট (CRUD list) — FR-3.1 .. FR-3.4.
@@ -71,6 +72,13 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
     }
   }
 
+  Future<void> _reorder(int oldIndex, int newIndex) async {
+    final list = [..._wards];
+    list.insert(newIndex, list.removeAt(oldIndex));
+    setState(() => _wards = [for (var i = 0; i < list.length; i++) list[i].copyWith(sortOrder: i)]);
+    await context.read<AppDataProvider>().reorderWards(widget.protisthan, list);
+  }
+
   Future<void> _delete(Ward w) async {
     final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
@@ -98,14 +106,19 @@ class _WardManagementScreenState extends State<WardManagementScreen> {
                   icon: Icons.storefront_outlined,
                   message: s.emptyWardsMessage,
                 )
-              : ListView.builder(
+              : ReorderableListView.builder(
                   padding: safeBodyPadding(context, amount: 12, fab: canManage),
+                  buildDefaultDragHandles: false,
                   itemCount: _wards.length,
+                  onReorderItem: _reorder,
                   itemBuilder: (context, index) {
                     final w = _wards[index];
                     return Card(
+                      key: ValueKey(w.uuid),
                       margin: const EdgeInsets.symmetric(vertical: 4),
                       child: ListTile(
+                        contentPadding: canManage ? const EdgeInsets.only(left: 4, right: 8) : null,
+                        leading: canManage ? DragHandle(index: index, tooltip: s.dragToReorder) : null,
                         title: Text(w.name),
                         subtitle: w.targetAmount > 0
                             ? Text(s.wardNisabLine(CurrencyFormatter.format(w.targetAmount)))

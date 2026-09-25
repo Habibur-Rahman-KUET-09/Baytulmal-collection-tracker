@@ -265,8 +265,73 @@ void main() {
     expect(criteria[1].isSpecial, isTrue);
     expect(criteria[2].isSpecial, isTrue);
     expect(criteria[3].isSpecial, isTrue);
-    expect(criteria[4].name, 'টোল');
-    expect(criteria[5].name, 'দোকান ভাড়া');
+    // Normal criteria follow in the order they were added (not alphabetical)
+    // until the user drags them into another order.
+    expect(criteria[4].name, 'দোকান ভাড়া');
+    expect(criteria[5].name, 'টোল');
+  });
+
+  test('wards and criteria keep the order they are dragged into; new ones go last', () async {
+    final pId = await addProtisthan('ক্রম টেস্ট');
+    final a = await addWard(pId, 'ক');
+    final b = await addWard(pId, 'খ');
+    final c = await addWard(pId, 'গ');
+    await db.saveSortOrder('ward', [c, a, b]);
+    final d = await addWard(pId, 'অ'); // alphabetically first, but added last
+
+    final wards = await db.getWardsForProtisthan(pId);
+    expect(wards.map((w) => w.id), [c, a, b, d]);
+    expect(wards.map((w) => w.sortOrder), [0, 1, 2, 3]);
+
+    // Editing a stale copy (loaded before the reorder) keeps the new order.
+    final staleA = Ward(
+      id: a,
+      uuid: 'w-ক-$pId',
+      protisthanId: pId,
+      name: 'ক (নতুন নাম)',
+      createdAt: DateTime.now().toIso8601String(),
+      sortOrder: 0,
+    );
+    await db.updateWard(staleA);
+    expect((await db.getWardsForProtisthan(pId)).map((w) => w.name), ['গ', 'ক (নতুন নাম)', 'খ', 'অ']);
+
+    final x = await addCriteria(pId, 'এক্স');
+    final y = await addCriteria(pId, 'ওয়াই');
+    await db.saveSortOrder('criteria', [y, x]);
+    final criteria = await db.getCriteriaForProtisthan(pId);
+    expect(criteria.take(4).every((c) => c.isSpecial), isTrue);
+    expect(criteria.skip(4).map((c) => c.id), [y, x]);
+  });
+
+  test('rows without a saved order (e.g. synced from another member) follow the ordered ones', () async {
+    final pId = await addProtisthan('সিঙ্ক ক্রম টেস্ট');
+    final first = await addWard(pId, 'দ্বিতীয়');
+    await db.upsertRawByUuid('ward', {
+      'uuid': 'cloud-ward-$pId',
+      'protisthan_id': pId,
+      'name': 'আগে',
+      'created_at': DateTime.now().toIso8601String(),
+      'target_amount': 0,
+      'is_thana_ward': 0,
+    });
+    final wards = await db.getWardsForProtisthan(pId);
+    expect(wards.map((w) => w.name), ['দ্বিতীয়', 'আগে']);
+    expect(wards.first.id, first);
+    expect(wards.last.sortOrder, isNull);
+
+    // A later pull that carries an order applies it without touching other fields.
+    await db.upsertRawByUuid('ward', {'uuid': 'cloud-ward-$pId', 'sort_order': 0});
+    await db.saveSortOrder('ward', [wards.last.id!, first]);
+    expect((await db.getWardsForProtisthan(pId)).map((w) => w.name), ['আগে', 'দ্বিতীয়']);
+  });
+
+  test('the home list follows the saved order', () async {
+    final before = (await db.getAllProtisthan()).map((p) => p.id!).toList();
+    final reversed = before.reversed.toList();
+    await db.saveSortOrder('protisthan', reversed);
+    expect((await db.getAllProtisthan()).map((p) => p.id), reversed);
+    final newId = await addProtisthan('সবশেষে যোগ');
+    expect((await db.getAllProtisthan()).last.id, newId);
   });
 
   test('deleteCriteria throws for a special criteria (ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা cannot be deleted)', () async {

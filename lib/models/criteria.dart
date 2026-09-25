@@ -25,6 +25,12 @@ class Criteria {
   /// highlighting) and that they can't be deleted.
   final int? specialOrder;
 
+  /// Position in its list when the user drags items into their own order
+  /// (0 first). Null for rows that were never placed — they follow the
+  /// ordered ones, alphabetically. Shared by every member of the থানা. Only normal criteria
+  /// are reordered; special ones always come first in [specialOrder].
+  final int? sortOrder;
+
   const Criteria({
     this.id,
     required this.uuid,
@@ -32,6 +38,7 @@ class Criteria {
     required this.name,
     required this.createdAt,
     this.specialOrder,
+    this.sortOrder,
   });
 
   bool get isSpecial => specialOrder != null;
@@ -55,6 +62,7 @@ class Criteria {
     String? name,
     String? createdAt,
     int? specialOrder,
+    int? sortOrder,
   }) {
     return Criteria(
       id: id ?? this.id,
@@ -63,6 +71,7 @@ class Criteria {
       name: name ?? this.name,
       createdAt: createdAt ?? this.createdAt,
       specialOrder: specialOrder ?? this.specialOrder,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -74,6 +83,7 @@ class Criteria {
       'name': name,
       'created_at': createdAt,
       'special_order': specialOrder,
+      'sort_order': sortOrder,
     };
   }
 
@@ -85,6 +95,7 @@ class Criteria {
       name: map['name'] as String,
       createdAt: map['created_at'] as String,
       specialOrder: map['special_order'] as int?,
+      sortOrder: map['sort_order'] as int?,
     );
   }
 }

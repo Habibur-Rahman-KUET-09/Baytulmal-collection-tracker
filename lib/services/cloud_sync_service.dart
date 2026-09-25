@@ -24,8 +24,8 @@ import 'auth_service.dart';
 ///   memberships/{protisthanUuid}            — {role, joinedAt} (reverse index)
 /// protisthans/{protisthanUuid}              — {name, createdAt}
 ///   members/{authUid}                       — {email, displayName, role, joinedAt}
-///   wards/{wardUuid}                        — {name, createdAt, targetAmount, isThanaWard}
-///   criteria/{criteriaUuid}                 — {name, createdAt, specialOrder}
+///   wards/{wardUuid}                        — {name, createdAt, targetAmount, isThanaWard, sortOrder}
+///   criteria/{criteriaUuid}                 — {name, createdAt, specialOrder, sortOrder}
 ///   entries/{entryUuid}                     — {wardUuid, criteriaUuid, month, year, amount, updatedAt}
 ///   remittances/{remittanceUuid}            — {month, year, expenseAmount, actualDepositAmount, updatedAt}
 /// ```
@@ -282,12 +282,37 @@ class CloudSyncService {
   }
 
   Future<void> pushWard(String protisthanUuid, Ward w) async {
-    await _protisthans.doc(protisthanUuid).collection('wards').doc(w.uuid).set({
-      'name': w.name,
-      'createdAt': w.createdAt,
-      'targetAmount': w.targetAmount,
-      'isThanaWard': w.isThanaWard,
-    });
+    await _protisthans.doc(protisthanUuid).collection('wards').doc(w.uuid).set(_wardData(w));
+  }
+
+  static Map<String, dynamic> _wardData(Ward w) => {
+        'name': w.name,
+        'createdAt': w.createdAt,
+        'targetAmount': w.targetAmount,
+        'isThanaWard': w.isThanaWard,
+        if (w.sortOrder != null) 'sortOrder': w.sortOrder,
+      };
+
+  static Map<String, dynamic> _criteriaData(Criteria c) => {
+        'name': c.name,
+        'createdAt': c.createdAt,
+        'specialOrder': c.specialOrder,
+        if (c.sortOrder != null) 'sortOrder': c.sortOrder,
+      };
+
+  /// Saves a dragged ward or criteria order ([collection] is `wards` or
+  /// `criteria`) for every member: document uuid -> position.
+  Future<void> pushSortOrder(String protisthanUuid, String collection, Map<String, int> orderByUuid) async {
+    assert(collection == 'wards' || collection == 'criteria');
+    final ref = _protisthans.doc(protisthanUuid).collection(collection);
+    final entries = orderByUuid.entries.toList();
+    for (var i = 0; i < entries.length; i += _batchChunkSize) {
+      final batch = _fs.batch();
+      for (final e in entries.skip(i).take(_batchChunkSize)) {
+        batch.update(ref.doc(e.key), {'sortOrder': e.value});
+      }
+      await batch.commit();
+    }
   }
 
   Future<void> deleteWardCloud(String protisthanUuid, String wardUuid) async {
@@ -304,11 +329,7 @@ class CloudSyncService {
   }
 
   Future<void> pushCriteria(String protisthanUuid, Criteria c) async {
-    await _protisthans.doc(protisthanUuid).collection('criteria').doc(c.uuid).set({
-      'name': c.name,
-      'createdAt': c.createdAt,
-      'specialOrder': c.specialOrder,
-    });
+    await _protisthans.doc(protisthanUuid).collection('criteria').doc(c.uuid).set(_criteriaData(c));
   }
 
   Future<void> deleteCriteriaCloud(String protisthanUuid, String criteriaUuid) async {
@@ -414,18 +435,9 @@ class CloudSyncService {
 
     final writes = <void Function(WriteBatch)>[
       for (final w in wards)
-        (b) => b.set(protisthanRef.collection('wards').doc(w.uuid), {
-              'name': w.name,
-              'createdAt': w.createdAt,
-              'targetAmount': w.targetAmount,
-              'isThanaWard': w.isThanaWard,
-            }),
+        (b) => b.set(protisthanRef.collection('wards').doc(w.uuid), _wardData(w)),
       for (final c in criteria)
-        (b) => b.set(protisthanRef.collection('criteria').doc(c.uuid), {
-              'name': c.name,
-              'createdAt': c.createdAt,
-              'specialOrder': c.specialOrder,
-            }),
+        (b) => b.set(protisthanRef.collection('criteria').doc(c.uuid), _criteriaData(c)),
       for (final e in entries)
         if (wardUuidByLocalId[e.wardId] != null && criteriaUuidByLocalId[e.criteriaId] != null)
           (b) => b.set(protisthanRef.collection('entries').doc(e.uuid), {
@@ -499,6 +511,8 @@ class CloudSyncService {
         'name': data['name'] as String? ?? '',
         'created_at': data['createdAt'] as String? ?? DateTime.now().toIso8601String(),
         'special_order': data['specialOrder'] as int?,
+        // Older docs have no order yet; keep whatever this device has.
+        if (data['sortOrder'] is num) 'sort_order': (data['sortOrder'] as num).toInt(),
       });
     }
     await db.pruneNotInUuids('criteria', 'protisthan_id', localProtisthanId, criteriaKeep);
@@ -515,6 +529,7 @@ class CloudSyncService {
         'created_at': data['createdAt'] as String? ?? DateTime.now().toIso8601String(),
         'target_amount': (data['targetAmount'] as num?)?.toDouble() ?? 0,
         'is_thana_ward': (data['isThanaWard'] as bool? ?? false) ? 1 : 0,
+        if (data['sortOrder'] is num) 'sort_order': (data['sortOrder'] as num).toInt(),
       });
     }
     await db.pruneNotInUuids('ward', 'protisthan_id', localProtisthanId, wardKeep);

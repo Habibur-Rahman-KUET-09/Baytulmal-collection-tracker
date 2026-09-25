@@ -38,6 +38,7 @@ class Strings {
   String get retry => _t('আবার চেষ্টা করুন', 'Retry');
   String get loading => _t('লোড হচ্ছে...', 'Loading...');
   String get nameRequired => _t('নাম আবশ্যক', 'Name is required');
+  String get dragToReorder => _t('ধরে টেনে ক্রম বদলান', 'Drag to reorder');
 
   // ---- screens/protisthan_list_screen.dart (home) ----
   String get homeDataManagementTooltip => _t('ডেটা ব্যবস্থাপনা (এক্সপোর্ট/ইমপোর্ট)', 'Data management (export/import)');
@@ -440,6 +441,22 @@ class Strings {
             'থানা (organisation) → Ward → Criteria → monthly entry. Each থানা '
                 'has its own list of wards and criteria, and every ward gets '
                 'one amount entered per criteria, per month.',
+          ),
+        ),
+        (
+          _t('তালিকার ক্রম', 'List order'),
+          _t(
+            'থানা, ওয়ার্ড ও খাতের তালিকায় বাম পাশের ⠿ চিহ্ন ধরে টেনে পছন্দমতো '
+                'ক্রমে সাজান — রিপোর্ট ও এন্ট্রি ফর্মেও সেই ক্রম দেখায়। ওয়ার্ড ও '
+                'খাতের ক্রম (অ্যাডমিন/নির্মাতা বদলাতে পারেন) থানার সব সদস্য একই '
+                'দেখেন; থানার তালিকার ক্রম শুধু আপনার ডিভাইসে থাকে। চারটি বিশেষ খাত '
+                'সবসময় উপরে থাকে। নতুন যোগ করা আইটেম তালিকার শেষে যায়।',
+            'Drag the ⠿ handle on the left of the থানা, ward and criteria '
+                'lists to put them in any order — reports and the entry form '
+                'follow it. Ward and criteria order (changed by admins/'
+                'creators) is the same for every member of the থানা; the থানা '
+                'list order stays on your device. The four special criteria '
+                'always stay on top. Newly added items go to the end.',
           ),
         ),
         (

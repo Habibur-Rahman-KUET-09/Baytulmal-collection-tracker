@@ -35,7 +35,7 @@ class DatabaseHelper {
     final path = join(dbPath, 'baytulmal_collection_tracker.db');
     return openDatabase(
       path,
-      version: 5,
+      version: 6,
       onConfigure: (db) async {
         await db.execute('PRAGMA foreign_keys = ON');
       },
@@ -50,7 +50,8 @@ class DatabaseHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         uuid TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        sort_order INTEGER
       )
     ''');
 
@@ -62,6 +63,7 @@ class DatabaseHelper {
         name TEXT NOT NULL,
         created_at TEXT NOT NULL,
         special_order INTEGER,
+        sort_order INTEGER,
         FOREIGN KEY (protisthan_id) REFERENCES protisthan (id) ON DELETE CASCADE
       )
     ''');
@@ -75,6 +77,7 @@ class DatabaseHelper {
         created_at TEXT NOT NULL,
         target_amount REAL NOT NULL DEFAULT 0,
         is_thana_ward INTEGER NOT NULL DEFAULT 0,
+        sort_order INTEGER,
         FOREIGN KEY (protisthan_id) REFERENCES protisthan (id) ON DELETE CASCADE
       )
     ''');
@@ -137,6 +140,9 @@ class DatabaseHelper {
   /// v4 -> v5: adds the hidden virtual "থানা" ward (one per Protisthan) used
   /// to track থানার আয় — its own direct normal-খাত collections — via the
   /// same ward/entry machinery (see [Ward.isThanaWard]/[ensureThanaWard]).
+  /// v5 -> v6: `sort_order` on protisthan/ward/criteria so lists follow the
+  /// order users drag them into; seeded from the alphabetical order they
+  /// were shown in before.
   Future<void> _upgradeSchema(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await db.execute('ALTER TABLE criteria ADD COLUMN special_order INTEGER');
@@ -153,6 +159,67 @@ class DatabaseHelper {
       await db.execute('ALTER TABLE ward ADD COLUMN is_thana_ward INTEGER NOT NULL DEFAULT 0');
       await _seedThanaWardForAllProtisthan(db);
     }
+    if (oldVersion < 6) {
+      for (final table in _orderedTables) {
+        await db.execute('ALTER TABLE $table ADD COLUMN sort_order INTEGER');
+      }
+      await _seedSortOrders(db);
+    }
+  }
+
+  static const _orderedTables = ['protisthan', 'ward', 'criteria'];
+
+  /// Numbers every row in the order its list showed before v6: the home
+  /// list and each থানা's wards/normal criteria alphabetically.
+  Future<void> _seedSortOrders(Database db) async {
+    Future<void> number(List<Map<String, Object?>> rows, String table) async {
+      for (var i = 0; i < rows.length; i++) {
+        await db.update(table, {'sort_order': i}, where: 'id = ?', whereArgs: [rows[i]['id']]);
+      }
+    }
+
+    await number(await db.query('protisthan', columns: ['id'], orderBy: 'name COLLATE NOCASE ASC, id ASC'), 'protisthan');
+    final protisthanRows = await db.query('protisthan', columns: ['id']);
+    for (final row in protisthanRows) {
+      final id = row['id'];
+      await number(
+        await db.query('ward',
+            columns: ['id'], where: 'protisthan_id = ?', whereArgs: [id], orderBy: 'name COLLATE NOCASE ASC, id ASC'),
+        'ward',
+      );
+      await number(
+        await db.query('criteria',
+            columns: ['id'],
+            where: 'protisthan_id = ? AND special_order IS NULL',
+            whereArgs: [id],
+            orderBy: 'name COLLATE NOCASE ASC, id ASC'),
+        'criteria',
+      );
+    }
+  }
+
+  /// Rows the user placed come first in their order; rows never placed
+  /// (e.g. added by another member before they synced an order) follow
+  /// alphabetically.
+  static const _userOrder = 'sort_order IS NULL, sort_order ASC, name COLLATE NOCASE ASC, id ASC';
+
+  Future<int> _nextSortOrder(DatabaseExecutor db, String table, {String? where, List<Object?>? whereArgs}) async {
+    final rows = await db.rawQuery(
+      'SELECT COALESCE(MAX(sort_order), -1) + 1 AS next FROM $table${where == null ? '' : ' WHERE $where'}',
+      whereArgs,
+    );
+    return (rows.first['next'] as num).toInt();
+  }
+
+  /// Saves the order a list was dragged into: [idsInOrder] get 0, 1, 2...
+  Future<void> saveSortOrder(String table, List<int> idsInOrder) async {
+    assert(_orderedTables.contains(table));
+    final db = await database;
+    final batch = db.batch();
+    for (var i = 0; i < idsInOrder.length; i++) {
+      batch.update(table, {'sort_order': i}, where: 'id = ?', whereArgs: [idsInOrder[i]]);
+    }
+    await batch.commit(noResult: true);
   }
 
   /// v2 -> v3: renames the existing special_order ২/৩ criteria in place
@@ -369,15 +436,19 @@ class DatabaseHelper {
   /// নাম itself, just like a real ward's নিসাব is taken at ward creation.
   Future<int> insertProtisthan(Protisthan p, {double thanaNisab = 0}) async {
     final db = await database;
-    final id = await db.insert('protisthan', p.toMap()..remove('id'));
+    final row = p.toMap()..remove('id');
+    row['sort_order'] ??= await _nextSortOrder(db, 'protisthan');
+    final id = await db.insert('protisthan', row);
     await ensureSpecialCriteria(id, db: db);
     await ensureThanaWard(id, targetAmount: thanaNisab, db: db);
     return id;
   }
 
+  /// Leaves `sort_order` alone: it only changes through [saveSortOrder], so
+  /// editing a stale copy of the row can't undo a reorder.
   Future<int> updateProtisthan(Protisthan p) async {
     final db = await database;
-    return db.update('protisthan', p.toMap(), where: 'id = ?', whereArgs: [p.id]);
+    return db.update('protisthan', p.toMap()..remove('sort_order'), where: 'id = ?', whereArgs: [p.id]);
   }
 
   Future<int> deleteProtisthan(int id) async {
@@ -387,7 +458,7 @@ class DatabaseHelper {
 
   Future<List<Protisthan>> getAllProtisthan() async {
     final db = await database;
-    final rows = await db.query('protisthan', orderBy: 'name COLLATE NOCASE ASC, id ASC');
+    final rows = await db.query('protisthan', orderBy: _userOrder);
     return rows.map(Protisthan.fromMap).toList();
   }
 
@@ -404,12 +475,17 @@ class DatabaseHelper {
 
   Future<int> insertCriteria(Criteria c) async {
     final db = await database;
-    return db.insert('criteria', c.toMap()..remove('id'));
+    final row = c.toMap()..remove('id');
+    if (c.specialOrder == null) {
+      row['sort_order'] ??= await _nextSortOrder(db, 'criteria',
+          where: 'protisthan_id = ? AND special_order IS NULL', whereArgs: [c.protisthanId]);
+    }
+    return db.insert('criteria', row);
   }
 
   Future<int> updateCriteria(Criteria c) async {
     final db = await database;
-    return db.update('criteria', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
+    return db.update('criteria', c.toMap()..remove('sort_order'), where: 'id = ?', whereArgs: [c.id]);
   }
 
   /// Special criteria (ধার্যকৃত নিসাব/আয়/ব্যয়/বাস্তব জমা) can't be deleted —
@@ -435,14 +511,14 @@ class DatabaseHelper {
   /// Special criteria always sort first, in their defined order, regardless
   /// of when they were created — migration-seeded special criteria on a
   /// pre-existing Protisthan would otherwise land after that Protisthan's
-  /// normal criteria by id.
+  /// normal criteria by id. Normal criteria follow in the user's order.
   Future<List<Criteria>> getCriteriaForProtisthan(int protisthanId) async {
     final db = await database;
     final rows = await db.query(
       'criteria',
       where: 'protisthan_id = ?',
       whereArgs: [protisthanId],
-      orderBy: 'CASE WHEN special_order IS NULL THEN 1 ELSE 0 END, special_order ASC, name COLLATE NOCASE ASC, id ASC',
+      orderBy: 'CASE WHEN special_order IS NULL THEN 1 ELSE 0 END, special_order ASC, $_userOrder',
     );
     return rows.map(Criteria.fromMap).toList();
   }
@@ -453,12 +529,17 @@ class DatabaseHelper {
 
   Future<int> insertWard(Ward w) async {
     final db = await database;
-    return db.insert('ward', w.toMap()..remove('id'));
+    final row = w.toMap()..remove('id');
+    if (!w.isThanaWard) {
+      row['sort_order'] ??= await _nextSortOrder(db, 'ward',
+          where: 'protisthan_id = ? AND is_thana_ward = 0', whereArgs: [w.protisthanId]);
+    }
+    return db.insert('ward', row);
   }
 
   Future<int> updateWard(Ward w) async {
     final db = await database;
-    return db.update('ward', w.toMap(), where: 'id = ?', whereArgs: [w.id]);
+    return db.update('ward', w.toMap()..remove('sort_order'), where: 'id = ?', whereArgs: [w.id]);
   }
 
   Future<int> deleteWard(int id) async {
@@ -474,7 +555,7 @@ class DatabaseHelper {
       'ward',
       where: 'protisthan_id = ? AND is_thana_ward = 0',
       whereArgs: [protisthanId],
-      orderBy: 'name COLLATE NOCASE ASC, id ASC',
+      orderBy: _userOrder,
     );
     return rows.map(Ward.fromMap).toList();
   }
