@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
 import '../l10n/strings.dart';
+import '../models/criteria.dart';
 import '../models/membership.dart';
 import '../models/protisthan.dart';
 import '../models/ward.dart';
@@ -12,6 +13,7 @@ import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/reorderable_card_list.dart';
 import 'criteria_management_screen.dart';
 import 'entry_form_screen.dart';
 import 'matrix_report_screen.dart';
@@ -141,6 +143,11 @@ class _WardsTabState extends State<_WardsTab> {
     }
   }
 
+  Future<void> _reorderWards(List<Ward> ordered) async {
+    setState(() => _wards = [for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i)]);
+    await context.read<AppDataProvider>().reorderWards(widget.protisthan, ordered);
+  }
+
   Future<void> _deleteWard(Ward w) async {
     final s = Strings.of(context);
     final confirmed = await showConfirmDialog(
@@ -169,15 +176,20 @@ class _WardsTabState extends State<_WardsTab> {
                 )
               : RefreshIndicator(
                   onRefresh: _load,
-                  child: ListView.builder(
+                  child: ReorderableCardList<Ward>(
+                    items: _wards,
+                    keyOf: (w) => ValueKey(w.uuid),
+                    canReorder: canManage,
+                    dragTooltip: s.dragToReorder,
+                    onReorder: _reorderWards,
                     padding: safeBodyPadding(context, amount: 12, fab: canManage),
-                    itemCount: _wards.length,
-                    itemBuilder: (context, index) {
-                      final w = _wards[index];
+                    itemBuilder: (context, w, dragHandle) {
                       final total = _totals[w.id] ?? 0;
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
+                          contentPadding: dragHandle != null ? const EdgeInsets.only(left: 4, right: 8) : null,
+                          leading: dragHandle,
                           title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text(
                             '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? s.wardEmptyAmount : CurrencyFormatter.format(total)}'
@@ -235,7 +247,8 @@ class _CriteriaTab extends StatefulWidget {
 
 class _CriteriaTabState extends State<_CriteriaTab> {
   final db = DatabaseHelper.instance;
-  int _count = 0;
+  List<Criteria> _criteria = [];
+  bool _loading = true;
 
   @override
   void initState() {
@@ -246,41 +259,77 @@ class _CriteriaTabState extends State<_CriteriaTab> {
   Future<void> _load() async {
     final list = await db.getCriteriaForProtisthan(widget.protisthan.id!);
     if (!mounted) return;
-    setState(() => _count = list.length);
+    setState(() {
+      _criteria = list;
+      _loading = false;
+    });
+  }
+
+  Future<void> _reorder(List<Criteria> ordered) async {
+    setState(() => _criteria = [
+          ..._criteria.where((c) => c.isSpecial),
+          for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i),
+        ]);
+    await context.read<AppDataProvider>().reorderCriteria(widget.protisthan, ordered);
+  }
+
+  void _openManagement() {
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+          builder: (_) => CriteriaManagementScreen(protisthan: widget.protisthan),
+        ))
+        .then((_) => _load());
   }
 
   @override
   Widget build(BuildContext context) {
     final s = Strings.of(context);
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.category_outlined, size: 56),
-            const SizedBox(height: 12),
-            Text(
-              s.criteriaCountLabel(_count),
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              s.criteriaSameListNote,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              icon: const Icon(Icons.edit),
-              label: Text(s.manageCriteriaButton),
-              onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute(
-                    builder: (_) => CriteriaManagementScreen(protisthan: widget.protisthan),
-                  ))
-                  .then((_) => _load()),
-            ),
-          ],
+    final theme = Theme.of(context);
+    final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
+    final canManage = role?.canManageStructure ?? false;
+    if (_loading) return const Center(child: CircularProgressIndicator());
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ReorderableCardList<Criteria>(
+        pinned: _criteria.where((c) => c.isSpecial).toList(),
+        items: _criteria.where((c) => !c.isSpecial).toList(),
+        keyOf: (c) => ValueKey(c.uuid),
+        canReorder: canManage,
+        dragTooltip: s.dragToReorder,
+        onReorder: _reorder,
+        padding: safeBodyPadding(context, amount: 12),
+        header: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s.criteriaCountLabel(_criteria.length), style: theme.textTheme.titleMedium),
+                    Text(s.criteriaSameListNote, style: theme.textTheme.bodySmall),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                icon: const Icon(Icons.edit),
+                label: Text(s.manageCriteriaButton),
+                onPressed: _openManagement,
+              ),
+            ],
+          ),
+        ),
+        itemBuilder: (context, c, dragHandle) => Card(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          child: ListTile(
+            contentPadding: dragHandle != null ? const EdgeInsets.only(left: 4, right: 16) : null,
+            leading: dragHandle ??
+                (c.isSpecial ? Icon(Icons.push_pin_outlined, size: 20, color: theme.colorScheme.outline) : null),
+            title: Text(c.name),
+            subtitle: c.isSpecial ? Text(s.specialCriteriaNote, style: const TextStyle(fontSize: 11.5)) : null,
+          ),
         ),
       ),
     );

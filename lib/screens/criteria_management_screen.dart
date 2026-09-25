@@ -9,7 +9,7 @@ import '../models/protisthan.dart';
 import '../providers/app_data_provider.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
-import '../widgets/drag_handle.dart';
+import '../widgets/reorderable_card_list.dart';
 import '../widgets/empty_state.dart';
 
 /// Screen 4: খাত ম্যানেজমেন্ট (CRUD list) — FR-2.1 .. FR-2.5.
@@ -87,24 +87,21 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
   List<Criteria> get _special => _criteria.where((c) => c.isSpecial).toList();
   List<Criteria> get _normal => _criteria.where((c) => !c.isSpecial).toList();
 
-  Future<void> _reorder(int oldIndex, int newIndex) async {
-    final normal = _normal;
-    normal.insert(newIndex, normal.removeAt(oldIndex));
+  Future<void> _reorder(List<Criteria> ordered) async {
     setState(() => _criteria = [
           ..._special,
-          for (var i = 0; i < normal.length; i++) normal[i].copyWith(sortOrder: i),
+          for (var i = 0; i < ordered.length; i++) ordered[i].copyWith(sortOrder: i),
         ]);
-    await context.read<AppDataProvider>().reorderCriteria(widget.protisthan, normal);
+    await context.read<AppDataProvider>().reorderCriteria(widget.protisthan, ordered);
   }
 
-  Widget _criteriaCard(Criteria c, {required bool canManage, int? dragIndex}) {
+  Widget _criteriaCard(Criteria c, {required bool canManage, Widget? dragHandle}) {
     final s = Strings.of(context);
     return Card(
-      key: ValueKey(c.uuid),
       margin: const EdgeInsets.symmetric(vertical: 4),
       child: ListTile(
-        contentPadding: dragIndex != null ? const EdgeInsets.only(left: 4, right: 8) : null,
-        leading: dragIndex != null ? DragHandle(index: dragIndex, tooltip: s.dragToReorder) : null,
+        contentPadding: dragHandle != null ? const EdgeInsets.only(left: 4, right: 8) : null,
+        leading: dragHandle,
         title: Text(c.name),
         subtitle: c.isSpecial
             ? Text(
@@ -146,27 +143,15 @@ class _CriteriaManagementScreenState extends State<CriteriaManagementScreen> {
                   icon: Icons.category_outlined,
                   message: s.emptyCriteriaMessage,
                 )
-              : CustomScrollView(
-                  slivers: [
-                    SliverPadding(
-                      padding: safeBodyPadding(context, amount: 12, fab: canManage).copyWith(bottom: 0),
-                      sliver: SliverList.list(
-                        children: [for (final c in _special) _criteriaCard(c, canManage: canManage)],
-                      ),
-                    ),
-                    SliverPadding(
-                      padding: safeBodyPadding(context, amount: 12, fab: canManage).copyWith(top: 0),
-                      sliver: SliverReorderableList(
-                        itemCount: _normal.length,
-                        onReorderItem: _reorder,
-                        itemBuilder: (context, index) => _criteriaCard(
-                          _normal[index],
-                          canManage: canManage,
-                          dragIndex: canManage ? index : null,
-                        ),
-                      ),
-                    ),
-                  ],
+              : ReorderableCardList<Criteria>(
+                  pinned: _special,
+                  items: _normal,
+                  keyOf: (c) => ValueKey(c.uuid),
+                  canReorder: canManage,
+                  dragTooltip: s.dragToReorder,
+                  onReorder: _reorder,
+                  padding: safeBodyPadding(context, amount: 12, fab: canManage),
+                  itemBuilder: (context, c, dragHandle) => _criteriaCard(c, canManage: canManage, dragHandle: dragHandle),
                 ),
       floatingActionButton: canManage
           ? FloatingActionButton(onPressed: _add, child: const Icon(Icons.add))
