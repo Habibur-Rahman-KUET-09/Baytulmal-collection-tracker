@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
@@ -10,6 +9,7 @@ import '../providers/app_data_provider.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/month_picker_field.dart';
+import '../utils/number_input.dart';
 
 /// থানার বাস্তব জমা খরচ — a separate, per-Protisthan/month page tracking how
 /// much of this Protisthan's collection was actually remitted upward:
@@ -78,7 +78,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
             protisthan: widget.protisthan,
             month: _month,
             year: _year,
-            expenseAmount: double.tryParse(_expenseCtrl.text.trim()) ?? 0,
+            expenseAmount: NumberInput.parse(_expenseCtrl.text) ?? 0,
             actualDepositAmount: _existingActualDepositAmount,
           );
       if (mounted) {
@@ -96,7 +96,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
     final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canEnter = role?.canEnterData ?? false;
-    final expense = double.tryParse(_expenseCtrl.text.trim()) ?? 0;
+    final expense = NumberInput.parse(_expenseCtrl.text) ?? 0;
     final thanaNisab = _actualDepositTotal - expense;
 
     return Scaffold(
@@ -132,7 +132,7 @@ class _RemittanceScreenState extends State<RemittanceScreen> {
                     border: const OutlineInputBorder(),
                   ),
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                  inputFormatters: NumberInput.formatters,
                   onChanged: (_) => setState(() {}),
                 ),
                 const SizedBox(height: 18),

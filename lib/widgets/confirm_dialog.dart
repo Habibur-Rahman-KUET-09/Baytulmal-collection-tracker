@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../l10n/strings.dart';
+import '../utils/number_input.dart';
 
 /// Confirmation dialog required before any destructive action
 /// (FR-1.4, FR-2.4, FR-3.4, FR-7.2).
@@ -137,7 +138,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                final parsed = double.tryParse(v.trim());
+                final parsed = NumberInput.parse(v);
                 if (parsed == null) return s.enterValidNumber;
                 if (parsed < 0) return s.negativeNotAllowed;
                 return null;
@@ -156,7 +157,7 @@ Future<ProtisthanInputResult?> showProtisthanInputDialog(
             if (formKey.currentState!.validate()) {
               Navigator.of(context).pop(ProtisthanInputResult(
                 name: nameCtrl.text.trim(),
-                nisab: double.tryParse(nisabCtrl.text.trim()) ?? 0,
+                nisab: NumberInput.parse(nisabCtrl.text) ?? 0,
               ));
             }
           },
@@ -219,7 +220,7 @@ Future<WardInputResult?> showWardInputDialog(
               textInputAction: TextInputAction.done,
               validator: (v) {
                 if (v == null || v.trim().isEmpty) return null;
-                final parsed = double.tryParse(v.trim());
+                final parsed = NumberInput.parse(v);
                 if (parsed == null) return s.enterValidNumber;
                 if (parsed < 0) return s.negativeNotAllowed;
                 return null;
@@ -238,7 +239,7 @@ Future<WardInputResult?> showWardInputDialog(
             if (formKey.currentState!.validate()) {
               Navigator.of(context).pop(WardInputResult(
                 name: nameCtrl.text.trim(),
-                targetAmount: double.tryParse(targetCtrl.text.trim()) ?? 0,
+                targetAmount: NumberInput.parse(targetCtrl.text) ?? 0,
               ));
             }
           },

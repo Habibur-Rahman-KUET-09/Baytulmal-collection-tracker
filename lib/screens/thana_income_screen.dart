@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
@@ -13,6 +12,7 @@ import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/month_picker_field.dart';
+import '../utils/number_input.dart';
 
 /// থানার আয় — থানার নিজস্ব প্রত্যক্ষ কালেকশন। খাত (normal criteria) অনুযায়ী
 /// ইনপুটের পাশাপাশি আয় (special criteria ২) এর জন্যও একটা আলাদা,
@@ -125,7 +125,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
       final allCriteria = [?_incomeCriteria, ..._normalCriteria];
       for (final c in allCriteria) {
         final text = _controllers[c.id!]!.text.trim();
-        final amount = text.isEmpty ? null : double.parse(text);
+        final amount = NumberInput.parse(text);
         await appData.saveEntry(
           protisthan: widget.protisthan,
           ward: thanaWard,
@@ -152,7 +152,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
         controller: _controllers[c.id!],
         enabled: canEnter,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+        inputFormatters: NumberInput.formatters,
         decoration: InputDecoration(
           labelText: s.amountFieldLabel(c.name),
           hintText: s.amountFieldHint,
@@ -161,7 +161,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
         onChanged: onChanged,
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
-          final parsed = double.tryParse(v.trim());
+          final parsed = NumberInput.parse(v);
           if (parsed == null) return s.enterValidNumber;
           if (parsed < 0) return s.negativeNotAllowed;
           return null;
@@ -177,7 +177,7 @@ class _ThanaIncomeScreenState extends State<ThanaIncomeScreen> {
     final canEnter = role?.canEnterData ?? false;
     final incomeCriteria = _incomeCriteria;
     final incomeText = incomeCriteria == null ? '' : (_controllers[incomeCriteria.id!]?.text.trim() ?? '');
-    final income = double.tryParse(incomeText) ?? 0;
+    final income = NumberInput.parse(incomeText) ?? 0;
     final hasTarget = _thanaTargetAmount > 0;
     final matched = hasTarget && (_thanaTargetAmount - income).abs() < 0.005;
     final incomeFilled = incomeText.isNotEmpty;

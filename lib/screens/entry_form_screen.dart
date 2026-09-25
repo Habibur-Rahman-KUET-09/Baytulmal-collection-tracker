@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../db/database_helper.dart';
@@ -13,6 +12,7 @@ import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/month_picker_field.dart';
+import '../utils/number_input.dart';
 import 'ward_summary_screen.dart';
 
 /// Screen 6: ডেটা এন্ট্রি ফর্ম — FR-4.1 .. FR-4.6.
@@ -113,7 +113,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
       for (final c in _criteriaList) {
         if (c.hasNoEntry) continue;
         final text = _controllers[c.id!]!.text.trim();
-        final amount = text.isEmpty ? null : double.parse(text);
+        final amount = NumberInput.parse(text);
         await appData.saveEntry(
           protisthan: widget.protisthan,
           ward: widget.ward,
@@ -140,7 +140,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
         controller: _controllers[c.id!],
         enabled: canEnter,
         keyboardType: const TextInputType.numberWithOptions(decimal: true),
-        inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+        inputFormatters: NumberInput.formatters,
         decoration: InputDecoration(
           labelText: s.amountFieldLabel(c.name),
           hintText: s.amountFieldHint,
@@ -149,7 +149,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
         onChanged: c.isSpecial ? (_) => setState(() {}) : null,
         validator: (v) {
           if (v == null || v.trim().isEmpty) return null;
-          final parsed = double.tryParse(v.trim());
+          final parsed = NumberInput.parse(v);
           if (parsed == null) return s.enterValidNumber;
           if (parsed < 0) return s.negativeNotAllowed;
           return null;
@@ -171,7 +171,7 @@ class _EntryFormScreenState extends State<EntryFormScreen> {
     double sumOf(int? specialOrder) {
       final c = editableSpecialCriteria.where((c) => c.specialOrder == specialOrder);
       if (c.isEmpty) return 0;
-      return double.tryParse(_controllers[c.first.id!]!.text.trim()) ?? 0;
+      return NumberInput.parse(_controllers[c.first.id!]!.text) ?? 0;
     }
 
     final income = sumOf(2);
