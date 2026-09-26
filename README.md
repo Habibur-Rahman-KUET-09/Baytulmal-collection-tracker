@@ -90,3 +90,16 @@ flutter test
   the SRS and is implemented as its own screen (`ডেটা ব্যবস্থাপনা`, reachable
   from the home screen's app bar icon), independent of the PDF/Excel
   matrix report export.
+
+## Versioning
+
+The app version is **1.0.0.N**. `1.0.0` is the Play Store version and
+changes only when decided; `N` is the build number, raised by one for every
+build that goes out:
+
+```sh
+tool/bump_build.sh   # 1.0.0+N -> 1.0.0+(N+1) in pubspec.yaml, prints 1.0.0.(N+1)
+```
+
+Android gets versionName `1.0.0.N` and versionCode `N`; CI names the APK
+`Baytulmal-1.0.0.N.apk`. The account screen shows the version.

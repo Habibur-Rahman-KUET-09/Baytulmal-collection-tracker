@@ -39,6 +39,7 @@ class Strings {
   String get loading => _t('লোড হচ্ছে...', 'Loading...');
   String get nameRequired => _t('নাম আবশ্যক', 'Name is required');
   String get dragToReorder => _t('ধরে টেনে ক্রম বদলান', 'Drag to reorder');
+  String get appVersion => _t('সংস্করণ', 'Version');
 
   // ---- screens/protisthan_list_screen.dart (home) ----
   String get homeDataManagementTooltip => _t('ডেটা ব্যবস্থাপনা (এক্সপোর্ট/ইমপোর্ট)', 'Data management (export/import)');
@@ -78,6 +79,19 @@ class Strings {
   String get wardEmptyAmount => _t('৳ ০ (খালি)', '৳ 0 (empty)');
   String nisabPrefix(String amount) => _t('ধার্যকৃত নিসাব $amount', 'Target নিসাব $amount');
   String get wardMenuManageAll => _t('সব ওয়ার্ড ম্যানেজ করুন', 'Manage all wards');
+  String get wardSearchHint => _t('ওয়ার্ডের নাম বা নম্বর দিয়ে খুঁজুন', 'Search by ward name or number');
+  String wardFilterAll(int count) => _t('সব (${BanglaMonths.toBanglaDigits(count)})', 'All (${BanglaMonths.toBanglaDigits(count)})');
+  String wardFilterPending(int count) =>
+      _t('বাকি (${BanglaMonths.toBanglaDigits(count)})', 'Pending (${BanglaMonths.toBanglaDigits(count)})');
+  String wardPendingLine(int pending, int total) {
+    final p = BanglaMonths.toBanglaDigits(pending);
+    final t = BanglaMonths.toBanglaDigits(total);
+    return _t('$tটি ওয়ার্ডের মধ্যে $pটির এন্ট্রি বাকি', '$p of $t wards still need an entry');
+  }
+  String get wardAllEntered => _t('এই মাসে সব ওয়ার্ডের এন্ট্রি হয়ে গেছে', 'Every ward has an entry this month');
+  String get wardNoMatch => _t('এই নামে কোনো ওয়ার্ড পাওয়া যায়নি', 'No ward matches that search');
+  String get wardEnteredTooltip => _t('এই মাসের এন্ট্রি হয়েছে', 'Entered this month');
+  String get wardPendingTooltip => _t('এই মাসের এন্ট্রি বাকি', 'Entry pending this month');
 
   String criteriaCountLabel(int count) {
     final c = BanglaMonths.toBanglaDigits(count);
@@ -230,6 +244,17 @@ class Strings {
   String entryFormTitle(String wardName) => _t('$wardName — এন্ট্রি', '$wardName — Entry');
   String get wardSummaryTooltip => _t('ওয়ার্ড সামারি দেখুন', 'View ward summary');
   String get entrySaved => _t('এন্ট্রি সংরক্ষণ করা হয়েছে', 'Entry saved');
+  String saveAndNextWard(String wardName) => _t('সংরক্ষণ করে পরের ওয়ার্ড: $wardName', 'Save and go to $wardName');
+  String get entrySavedAllDone =>
+      _t('এন্ট্রি সংরক্ষণ হয়েছে — এই মাসে সব ওয়ার্ডের এন্ট্রি শেষ', 'Entry saved — every ward is done for this month');
+  String get previousWard => _t('আগের ওয়ার্ড', 'Previous ward');
+  String get nextWard => _t('পরের ওয়ার্ড', 'Next ward');
+  String get chooseWard => _t('ওয়ার্ড বাছাই করুন', 'Choose a ward');
+  String wardPosition(int index, int total) =>
+      _t('${BanglaMonths.toBanglaDigits(index)}/${BanglaMonths.toBanglaDigits(total)}', '$index/$total');
+  String get unsavedChangesTitle => _t('সংরক্ষণ করা হয়নি', 'Not saved');
+  String get unsavedChangesMessage =>
+      _t('এই ওয়ার্ডে লেখা টাকা এখনো সংরক্ষণ করা হয়নি। সংরক্ষণ না করেই অন্য ওয়ার্ডে যাবেন?', 'The amounts typed for this ward are not saved yet. Go to another ward without saving?');
   String get amountFieldHint => _t('খালি', 'Empty');
   String amountFieldLabel(String criteriaName) => _t('$criteriaName (৳)', '$criteriaName (৳)');
   String get selectMonth => _t('মাস নির্বাচন করুন', 'Select month');

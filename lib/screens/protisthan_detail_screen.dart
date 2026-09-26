@@ -11,6 +11,7 @@ import '../providers/app_data_provider.dart';
 import '../utils/bangla_utils.dart';
 import '../utils/currency_formatter.dart';
 import '../utils/safe_padding.dart';
+import '../utils/ward_search.dart';
 import '../widgets/confirm_dialog.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/reorderable_card_list.dart';
@@ -91,12 +92,27 @@ class _WardsTabState extends State<_WardsTab> {
   final db = DatabaseHelper.instance;
   List<Ward> _wards = [];
   Map<int, double> _totals = {};
+  Set<int> _entered = {};
   bool _loading = true;
+
+  /// Search and the বাকি filter, for থানা with many wards.
+  final _search = TextEditingController();
+  String _query = '';
+  bool _pendingOnly = false;
+
+  /// Search is offered once the list no longer fits at a glance.
+  static const _searchFrom = 8;
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -106,12 +122,82 @@ class _WardsTabState extends State<_WardsTab> {
     for (final w in wards) {
       totals[w.id!] = await db.getWardTotal(w.id!, widget.month, widget.year);
     }
+    final entered = await db.getWardIdsWithEntries(widget.protisthan.id!, widget.month, widget.year);
     if (!mounted) return;
     setState(() {
       _wards = wards;
       _totals = totals;
+      _entered = entered;
       _loading = false;
     });
+  }
+
+  void _openEntry(Ward w) {
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+          builder: (_) => EntryFormScreen(
+            ward: w,
+            wards: _wards,
+            protisthan: widget.protisthan,
+            initialMonth: widget.month,
+            initialYear: widget.year,
+          ),
+        ))
+        .then((_) => _load());
+  }
+
+  /// Search box, বাকি/সব chips and how many are left, above the list.
+  Widget _header(Strings s, int pending, int shown) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        if (_wards.length >= _searchFrom) ...[
+          TextField(
+            controller: _search,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: s.wardSearchHint,
+              isDense: true,
+              border: const OutlineInputBorder(),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () => setState(() {
+                        _search.clear();
+                        _query = '';
+                      }),
+                    ),
+            ),
+            onChanged: (v) => setState(() => _query = v),
+          ),
+          const SizedBox(height: 8),
+        ],
+        Wrap(spacing: 8, crossAxisAlignment: WrapCrossAlignment.center, children: [
+          ChoiceChip(
+            label: Text(s.wardFilterPending(pending)),
+            selected: _pendingOnly,
+            onSelected: (_) => setState(() => _pendingOnly = true),
+          ),
+          ChoiceChip(
+            label: Text(s.wardFilterAll(_wards.length)),
+            selected: !_pendingOnly,
+            onSelected: (_) => setState(() => _pendingOnly = false),
+          ),
+        ]),
+        const SizedBox(height: 6),
+        Text(
+          pending == 0 ? s.wardAllEntered : s.wardPendingLine(pending, _wards.length),
+          style: TextStyle(color: pending == 0 ? Colors.green : scheme.onSurfaceVariant, fontSize: 12.5),
+        ),
+        if (shown == 0 && (_query.isNotEmpty || pending > 0))
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(child: Text(s.wardNoMatch, textAlign: TextAlign.center)),
+          ),
+      ]),
+    );
   }
 
   Future<void> _addWard() async {
@@ -166,6 +252,12 @@ class _WardsTabState extends State<_WardsTab> {
     final s = Strings.of(context);
     final role = context.watch<AppDataProvider>().roleFor(widget.protisthan);
     final canManage = role?.canManageStructure ?? false;
+    final pending = _wards.where((w) => !_entered.contains(w.id)).length;
+    final shown = [
+      for (final w in _wards)
+        if ((!_pendingOnly || !_entered.contains(w.id)) && WardSearch.matches(w.name, _query)) w,
+    ];
+    final filtering = _pendingOnly || _query.trim().isNotEmpty;
     return Scaffold(
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -177,20 +269,34 @@ class _WardsTabState extends State<_WardsTab> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: ReorderableCardList<Ward>(
-                    items: _wards,
+                    items: shown,
                     keyOf: (w) => ValueKey(w.uuid),
-                    canReorder: canManage,
+                    // Reordering a filtered part of the list would be confusing.
+                    canReorder: canManage && !filtering,
+                    header: _header(s, pending, shown.length),
                     dragTooltip: s.dragToReorder,
                     onReorder: _reorderWards,
                     padding: safeBodyPadding(context, amount: 12, fab: canManage),
                     itemBuilder: (context, w, dragHandle) {
                       final total = _totals[w.id] ?? 0;
+                      final entered = _entered.contains(w.id);
                       return Card(
                         margin: const EdgeInsets.symmetric(vertical: 6),
                         child: ListTile(
                           contentPadding: dragHandle != null ? const EdgeInsets.only(left: 4, right: 8) : null,
                           leading: dragHandle,
-                          title: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          title: Row(children: [
+                            Tooltip(
+                              message: entered ? s.wardEnteredTooltip : s.wardPendingTooltip,
+                              child: Icon(
+                                entered ? Icons.check_circle : Icons.hourglass_empty_rounded,
+                                size: 18,
+                                color: entered ? Colors.green : Colors.orange,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(w.name, style: const TextStyle(fontWeight: FontWeight.bold))),
+                          ]),
                           subtitle: Text(
                             '${BanglaMonths.label(widget.month, widget.year)} · ${total == 0 ? s.wardEmptyAmount : CurrencyFormatter.format(total)}'
                             '${w.targetAmount > 0 ? '  •  ${s.nisabPrefix(CurrencyFormatter.format(w.targetAmount))}' : ''}',
@@ -215,16 +321,7 @@ class _WardsTabState extends State<_WardsTab> {
                                   ],
                                 )
                               : null,
-                          onTap: () => Navigator.of(context)
-                              .push(MaterialPageRoute(
-                                builder: (_) => EntryFormScreen(
-                                  ward: w,
-                                  protisthan: widget.protisthan,
-                                  initialMonth: widget.month,
-                                  initialYear: widget.year,
-                                ),
-                              ))
-                              .then((_) => _load()),
+                          onTap: () => _openEntry(w),
                         ),
                       );
                     },

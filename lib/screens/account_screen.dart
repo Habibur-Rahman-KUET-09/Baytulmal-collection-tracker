@@ -1,11 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import '../l10n/locale_provider.dart';
 import '../l10n/strings.dart';
 import '../services/auth_service.dart';
 import '../services/cloud_sync_service.dart';
+import '../utils/bangla_utils.dart';
 import '../utils/safe_padding.dart';
 import '../widgets/confirm_dialog.dart';
 import 'help_screen.dart';
@@ -312,6 +314,16 @@ class _AccountScreenState extends State<AccountScreen> {
               const SizedBox(height: 24),
               const Center(child: CircularProgressIndicator()),
             ],
+            const SizedBox(height: 16),
+            Center(
+              child: FutureBuilder<PackageInfo>(
+                future: PackageInfo.fromPlatform(),
+                builder: (context, snap) => Text(
+                  snap.hasData ? '${s.appVersion} ${appVersionLabel(snap.data!)}' : '',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -323,4 +335,13 @@ class _ChangePasswordResult {
   final String currentPassword;
   final String newPassword;
   const _ChangePasswordResult(this.currentPassword, this.newPassword);
+}
+
+/// "1.0.0.N" — on Android the versionName already carries the build number
+/// (see android/app/build.gradle); elsewhere it is added here.
+String appVersionLabel(PackageInfo info) {
+  final v = info.version.split('.').length >= 4 || info.buildNumber.isEmpty
+      ? info.version
+      : '${info.version}.${info.buildNumber}';
+  return BanglaMonths.toBanglaDigitsText(v);
 }

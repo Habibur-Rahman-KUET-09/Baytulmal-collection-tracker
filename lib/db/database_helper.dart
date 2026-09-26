@@ -643,6 +643,18 @@ class DatabaseHelper {
     }
   }
 
+  /// The wards of a Protisthan that have at least one entry for a month —
+  /// the ওয়ার্ড list marks the rest as still বাকি.
+  Future<Set<int>> getWardIdsWithEntries(int protisthanId, int month, int year) async {
+    final db = await database;
+    final rows = await db.rawQuery(
+      'SELECT DISTINCT e.ward_id AS ward_id FROM entry e JOIN ward w ON w.id = e.ward_id '
+      'WHERE w.protisthan_id = ? AND e.month = ? AND e.year = ?',
+      [protisthanId, month, year],
+    );
+    return {for (final r in rows) r['ward_id'] as int};
+  }
+
   /// Existing entries for a ward + month/year, keyed by criteria_id — used
   /// to pre-fill the entry form (FR-4.5).
   Future<Map<int, double>> getEntriesForWardMonth(int wardId, int month, int year) async {

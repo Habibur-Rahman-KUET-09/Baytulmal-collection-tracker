@@ -48,8 +48,11 @@ android {
         applicationId "com.baytulmal.collection_tracker"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
+        // Version "1.0.0.N": pubspec's 1.0.0 is the Play Store version and
+        // only changes when asked; N (the build number after "+") goes up by
+        // one on every build (tool/bump_build.sh) and is the versionCode.
         versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        versionName "${flutterVersionName}.${flutterVersionCode}"
     }
 
     signingConfigs {

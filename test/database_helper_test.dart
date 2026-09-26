@@ -136,6 +136,28 @@ void main() {
     expect(matrix.amountFor(w1, c3), 0);
   });
 
+  test('wards with an entry this month are told apart from the ones still pending', () async {
+    final pId = await addProtisthan('সবুজবাগ পরীক্ষা');
+    final other = await addProtisthan('অন্য থানা');
+    final cId = await addCriteria(pId, 'এককালীন');
+    final w1 = await addWard(pId, 'পশ্চিম ১');
+    final w2 = await addWard(pId, 'পশ্চিম ২');
+    final w3 = await addWard(pId, 'পশ্চিম ৩');
+    final elsewhere = await addWard(other, 'পূর্ব ১');
+    final otherC = await addCriteria(other, 'এককালীন');
+
+    await db.saveEntry(wardId: w1, criteriaId: cId, month: 9, year: 2026, amount: 500, uuidFactory: _uuid.v4());
+    await db.saveEntry(wardId: w3, criteriaId: cId, month: 8, year: 2026, amount: 700, uuidFactory: _uuid.v4());
+    await db.saveEntry(wardId: elsewhere, criteriaId: otherC, month: 9, year: 2026, amount: 900, uuidFactory: _uuid.v4());
+    expect(await db.getWardIdsWithEntries(pId, 9, 2026), {w1});
+
+    // Clearing a ward's only amount makes it pending again.
+    await db.saveEntry(wardId: w2, criteriaId: cId, month: 9, year: 2026, amount: 0, uuidFactory: _uuid.v4());
+    expect(await db.getWardIdsWithEntries(pId, 9, 2026), {w1, w2});
+    await db.saveEntry(wardId: w1, criteriaId: cId, month: 9, year: 2026, amount: null, uuidFactory: _uuid.v4());
+    expect(await db.getWardIdsWithEntries(pId, 9, 2026), {w2});
+  });
+
   test('a criteria added after some entries exist shows as blank for past months, no backfill (FR-2.5)', () async {
     final pId = await addProtisthan('নতুন বাজার');
     final c1 = await addCriteria(pId, 'দোকান ভাড়া');

@@ -94,8 +94,10 @@ class BanglaMonths {
 
   /// Despite the name (kept for the many existing call sites), this
   /// renders Western digits when [useBangla] is false.
-  static String toBanglaDigits(num value) {
-    final s = value.toString();
+  static String toBanglaDigits(num value) => toBanglaDigitsText(value.toString());
+
+  /// The same for text that holds digits, e.g. a version "1.0.0.2".
+  static String toBanglaDigitsText(String s) {
     if (!useBangla) return s;
     final buffer = StringBuffer();
     for (final ch in s.split('')) {
